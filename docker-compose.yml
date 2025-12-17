@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  subaru-inventory:
+    build: .
+    container_name: subaru-inventory
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data
+      - ./uploads:/app/uploads
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped

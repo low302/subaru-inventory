@@ -1,0 +1,579 @@
+// State Management
+let currentView = 'oem-parts';
+let oemParts = [];
+let wheels = [];
+let currentEditId = null;
+let selectedImages = [];
+
+// Initialize App
+document.addEventListener('DOMContentLoaded', () => {
+    initializeApp();
+    setupEventListeners();
+});
+
+async function initializeApp() {
+    await loadOEMParts();
+    await loadWheels();
+    updateStats();
+}
+
+function setupEventListeners() {
+    // Navigation
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.addEventListener('click', () => switchView(btn.dataset.view));
+    });
+
+    // Search
+    document.getElementById('oem-search').addEventListener('input', (e) => {
+        filterOEMParts(e.target.value);
+    });
+
+    document.getElementById('wheels-search').addEventListener('input', (e) => {
+        filterWheels(e.target.value);
+    });
+
+    // Forms
+    document.getElementById('part-form').addEventListener('submit', handlePartSubmit);
+    document.getElementById('wheel-form').addEventListener('submit', handleWheelSubmit);
+
+    // File input
+    document.getElementById('wheel-images').addEventListener('change', handleImageSelect);
+
+    // Close modals on background click
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeAllModals();
+            }
+        });
+    });
+}
+
+// View Switching
+function switchView(view) {
+    currentView = view;
+    
+    // Update navigation
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.view === view);
+    });
+    
+    // Update views
+    document.querySelectorAll('.view').forEach(v => {
+        v.classList.toggle('active', v.id === `${view}-view`);
+    });
+}
+
+// OEM Parts Functions
+async function loadOEMParts() {
+    try {
+        const response = await fetch('/api/oem-parts');
+        oemParts = await response.json();
+        renderOEMParts();
+        updateStats();
+    } catch (error) {
+        console.error('Error loading OEM parts:', error);
+    }
+}
+
+function renderOEMParts(filteredParts = null) {
+    const tbody = document.getElementById('oem-parts-tbody');
+    const parts = filteredParts || oemParts;
+    
+    if (parts.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7">
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none">
+                            <path d="M20 7H4C2.89543 7 2 7.89543 2 9V19C2 20.1046 2.89543 21 4 21H20C21.1046 21 22 20.1046 22 19V9C22 7.89543 21.1046 7 20 7Z" stroke="currentColor" stroke-width="2"/>
+                            <path d="M16 7V5C16 3.89543 15.1046 3 14 3H10C8.89543 3 8 3.89543 8 5V7" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                        <h3>No parts found</h3>
+                        <p>Add your first OEM part to get started</p>
+                    </div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = parts.map(part => {
+        const quantity = parseInt(part.quantity) || 0;
+        let statusClass = 'status-in-stock';
+        let statusText = 'In Stock';
+        
+        if (quantity === 0) {
+            statusClass = 'status-out-of-stock';
+            statusText = 'Out of Stock';
+        } else if (quantity <= 5) {
+            statusClass = 'status-low-stock';
+            statusText = 'Low Stock';
+        }
+        
+        return `
+            <tr>
+                <td><strong>${escapeHtml(part.partNumber)}</strong></td>
+                <td>${escapeHtml(part.partName)}</td>
+                <td>${escapeHtml(part.category || '-')}</td>
+                <td><span class="status-badge ${statusClass}">${quantity} ${statusText}</span></td>
+                <td>${escapeHtml(part.location || '-')}</td>
+                <td><strong>$${parseFloat(part.price || 0).toFixed(2)}</strong></td>
+                <td>
+                    <div class="table-actions">
+                        <button class="btn btn-sm btn-secondary" onclick="editPart('${part.id}')">Edit</button>
+                        <button class="btn btn-sm btn-danger" onclick="deletePart('${part.id}')">Delete</button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function filterOEMParts(searchTerm) {
+    const filtered = oemParts.filter(part => {
+        const search = searchTerm.toLowerCase();
+        return (
+            part.partNumber.toLowerCase().includes(search) ||
+            part.partName.toLowerCase().includes(search) ||
+            (part.category && part.category.toLowerCase().includes(search))
+        );
+    });
+    renderOEMParts(filtered);
+}
+
+function openAddPartModal() {
+    currentEditId = null;
+    document.getElementById('part-modal-title').textContent = 'Add OEM Part';
+    document.getElementById('part-form').reset();
+    document.getElementById('part-id').value = '';
+    document.getElementById('part-modal').classList.add('active');
+}
+
+function editPart(id) {
+    const part = oemParts.find(p => p.id === id);
+    if (!part) return;
+    
+    currentEditId = id;
+    document.getElementById('part-modal-title').textContent = 'Edit OEM Part';
+    document.getElementById('part-id').value = id;
+    document.getElementById('part-number').value = part.partNumber;
+    document.getElementById('part-name').value = part.partName;
+    document.getElementById('part-category').value = part.category || '';
+    document.getElementById('part-quantity').value = part.quantity;
+    document.getElementById('part-location').value = part.location || '';
+    document.getElementById('part-price').value = part.price || '';
+    document.getElementById('part-notes').value = part.notes || '';
+    
+    document.getElementById('part-modal').classList.add('active');
+}
+
+async function handlePartSubmit(e) {
+    e.preventDefault();
+    
+    const data = {
+        partNumber: document.getElementById('part-number').value,
+        partName: document.getElementById('part-name').value,
+        category: document.getElementById('part-category').value,
+        quantity: document.getElementById('part-quantity').value,
+        location: document.getElementById('part-location').value,
+        price: document.getElementById('part-price').value,
+        notes: document.getElementById('part-notes').value
+    };
+    
+    try {
+        const url = currentEditId ? `/api/oem-parts/${currentEditId}` : '/api/oem-parts';
+        const method = currentEditId ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+            await loadOEMParts();
+            closePartModal();
+        }
+    } catch (error) {
+        console.error('Error saving part:', error);
+        alert('Error saving part. Please try again.');
+    }
+}
+
+async function deletePart(id) {
+    if (!confirm('Are you sure you want to delete this part?')) return;
+    
+    try {
+        const response = await fetch(`/api/oem-parts/${id}`, { method: 'DELETE' });
+        if (response.ok) {
+            await loadOEMParts();
+        }
+    } catch (error) {
+        console.error('Error deleting part:', error);
+        alert('Error deleting part. Please try again.');
+    }
+}
+
+function closePartModal() {
+    document.getElementById('part-modal').classList.remove('active');
+    currentEditId = null;
+}
+
+// Wheels Functions
+async function loadWheels() {
+    try {
+        const response = await fetch('/api/wheels');
+        wheels = await response.json();
+        renderWheels();
+        updateStats();
+    } catch (error) {
+        console.error('Error loading wheels:', error);
+    }
+}
+
+function renderWheels(filteredWheels = null) {
+    const grid = document.getElementById('wheels-grid');
+    const wheelsToRender = filteredWheels || wheels;
+    
+    if (wheelsToRender.length === 0) {
+        grid.innerHTML = `
+            <div class="empty-state" style="grid-column: 1 / -1;">
+                <svg viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
+                    <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/>
+                    <path d="M12 3V7M12 17V21M3 12H7M17 12H21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <h3>No wheels found</h3>
+                <p>Add your first wheel set to get started</p>
+            </div>
+        `;
+        return;
+    }
+    
+    grid.innerHTML = wheelsToRender.map(wheel => {
+        const mainImage = wheel.images && wheel.images.length > 0 
+            ? wheel.images[0] 
+            : 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 240"%3E%3Crect fill="%23f1f5f9" width="400" height="240"/%3E%3Ctext fill="%2394a3b8" font-family="sans-serif" font-size="48" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3ENo Image%3C/text%3E%3C/svg%3E';
+        
+        const conditionClass = wheel.condition ? wheel.condition.toLowerCase() : 'good';
+        
+        return `
+            <div class="wheel-card" onclick="viewWheelDetails('${wheel.id}')">
+                <img src="${mainImage}" alt="${escapeHtml(wheel.model)}" class="wheel-image">
+                <div class="wheel-content">
+                    <div class="wheel-header">
+                        <span class="wheel-sku">${escapeHtml(wheel.sku)}</span>
+                        <span class="wheel-price">$${parseFloat(wheel.price || 0).toFixed(2)}</span>
+                    </div>
+                    <div class="wheel-model">${escapeHtml(wheel.model)}</div>
+                    <div class="wheel-specs">
+                        <span class="wheel-spec">${escapeHtml(wheel.size)}</span>
+                        <span class="wheel-spec">${escapeHtml(wheel.boltPattern)}</span>
+                        ${wheel.offset ? `<span class="wheel-spec">${escapeHtml(wheel.offset)}</span>` : ''}
+                    </div>
+                    <div class="wheel-condition ${conditionClass}">
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                            <circle cx="6" cy="6" r="6"/>
+                        </svg>
+                        ${escapeHtml(wheel.condition || 'Good')}
+                    </div>
+                    <div class="wheel-actions" onclick="event.stopPropagation()">
+                        <button class="btn btn-sm btn-secondary" onclick="editWheel('${wheel.id}')">Edit</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteWheel('${wheel.id}')">Delete</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function filterWheels(searchTerm) {
+    const filtered = wheels.filter(wheel => {
+        const search = searchTerm.toLowerCase();
+        return (
+            wheel.sku.toLowerCase().includes(search) ||
+            wheel.model.toLowerCase().includes(search) ||
+            (wheel.size && wheel.size.toLowerCase().includes(search)) ||
+            (wheel.style && wheel.style.toLowerCase().includes(search))
+        );
+    });
+    renderWheels(filtered);
+}
+
+function openAddWheelModal() {
+    currentEditId = null;
+    selectedImages = [];
+    document.getElementById('wheel-modal-title').textContent = 'Add Wheel Set';
+    document.getElementById('wheel-form').reset();
+    document.getElementById('wheel-id').value = '';
+    document.getElementById('wheel-sku').value = `WHEEL-${generateRandomSKU()}`;
+    document.getElementById('wheel-status').value = 'Available';
+    document.getElementById('image-preview').innerHTML = '';
+    document.getElementById('wheel-modal').classList.add('active');
+}
+
+function editWheel(id) {
+    const wheel = wheels.find(w => w.id === id);
+    if (!wheel) return;
+    
+    currentEditId = id;
+    selectedImages = [];
+    document.getElementById('wheel-modal-title').textContent = 'Edit Wheel Set';
+    document.getElementById('wheel-id').value = id;
+    document.getElementById('wheel-sku').value = wheel.sku;
+    document.getElementById('wheel-model').value = wheel.model;
+    document.getElementById('wheel-size').value = wheel.size;
+    document.getElementById('wheel-offset').value = wheel.offset || '';
+    document.getElementById('wheel-bolt-pattern').value = wheel.boltPattern;
+    document.getElementById('wheel-style').value = wheel.style || '';
+    document.getElementById('wheel-condition').value = wheel.condition || 'Good';
+    document.getElementById('wheel-price').value = wheel.price || '';
+    document.getElementById('wheel-status').value = wheel.status || 'Available';
+    document.getElementById('wheel-notes').value = wheel.notes || '';
+    
+    // Show existing images
+    const preview = document.getElementById('image-preview');
+    preview.innerHTML = (wheel.images || []).map(img => `
+        <div class="image-preview-item">
+            <img src="${img}" alt="Wheel image">
+        </div>
+    `).join('');
+    
+    document.getElementById('wheel-modal').classList.add('active');
+}
+
+function handleImageSelect(e) {
+    const files = Array.from(e.target.files);
+    selectedImages = files;
+    
+    const preview = document.getElementById('image-preview');
+    preview.innerHTML = files.map((file, index) => {
+        const url = URL.createObjectURL(file);
+        return `
+            <div class="image-preview-item">
+                <img src="${url}" alt="Preview ${index + 1}">
+                <button type="button" class="image-preview-remove" onclick="removeImage(${index})">&times;</button>
+            </div>
+        `;
+    }).join('');
+}
+
+function removeImage(index) {
+    selectedImages.splice(index, 1);
+    const dt = new DataTransfer();
+    selectedImages.forEach(file => dt.items.add(file));
+    document.getElementById('wheel-images').files = dt.files;
+    
+    const preview = document.getElementById('image-preview');
+    preview.innerHTML = selectedImages.map((file, i) => {
+        const url = URL.createObjectURL(file);
+        return `
+            <div class="image-preview-item">
+                <img src="${url}" alt="Preview ${i + 1}">
+                <button type="button" class="image-preview-remove" onclick="removeImage(${i})">&times;</button>
+            </div>
+        `;
+    }).join('');
+}
+
+async function handleWheelSubmit(e) {
+    e.preventDefault();
+    
+    const formData = new FormData();
+    
+    // Add text fields
+    formData.append('sku', document.getElementById('wheel-sku').value);
+    formData.append('model', document.getElementById('wheel-model').value);
+    formData.append('size', document.getElementById('wheel-size').value);
+    formData.append('offset', document.getElementById('wheel-offset').value);
+    formData.append('boltPattern', document.getElementById('wheel-bolt-pattern').value);
+    formData.append('style', document.getElementById('wheel-style').value);
+    formData.append('condition', document.getElementById('wheel-condition').value);
+    formData.append('price', document.getElementById('wheel-price').value);
+    formData.append('status', document.getElementById('wheel-status').value);
+    formData.append('notes', document.getElementById('wheel-notes').value);
+    
+    // Add images
+    const imageInput = document.getElementById('wheel-images');
+    Array.from(imageInput.files).forEach(file => {
+        formData.append('images', file);
+    });
+    
+    try {
+        const url = currentEditId ? `/api/wheels/${currentEditId}` : '/api/wheels';
+        const method = currentEditId ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method,
+            body: formData
+        });
+        
+        if (response.ok) {
+            await loadWheels();
+            closeWheelModal();
+        }
+    } catch (error) {
+        console.error('Error saving wheel:', error);
+        alert('Error saving wheel. Please try again.');
+    }
+}
+
+async function deleteWheel(id) {
+    if (!confirm('Are you sure you want to delete this wheel set? All associated images will be removed.')) return;
+    
+    try {
+        const response = await fetch(`/api/wheels/${id}`, { method: 'DELETE' });
+        if (response.ok) {
+            await loadWheels();
+        }
+    } catch (error) {
+        console.error('Error deleting wheel:', error);
+        alert('Error deleting wheel. Please try again.');
+    }
+}
+
+function closeWheelModal() {
+    document.getElementById('wheel-modal').classList.remove('active');
+    currentEditId = null;
+    selectedImages = [];
+}
+
+function viewWheelDetails(id) {
+    const wheel = wheels.find(w => w.id === id);
+    if (!wheel) return;
+    
+    const content = document.getElementById('wheel-details-content');
+    const images = wheel.images && wheel.images.length > 0 
+        ? wheel.images 
+        : ['data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400"%3E%3Crect fill="%23f1f5f9" width="400" height="400"/%3E%3Ctext fill="%2394a3b8" font-family="sans-serif" font-size="48" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3ENo Image%3C/text%3E%3C/svg%3E'];
+    
+    const conditionClass = wheel.condition ? wheel.condition.toLowerCase() : 'good';
+    
+    content.innerHTML = `
+        <div class="wheel-details-grid">
+            <div class="wheel-details-images">
+                <img src="${images[0]}" alt="${escapeHtml(wheel.model)}" class="wheel-details-main-image" id="main-image">
+                ${images.length > 1 ? `
+                    <div class="wheel-details-thumbnails">
+                        ${images.map((img, index) => `
+                            <img src="${img}" alt="View ${index + 1}" class="wheel-details-thumbnail ${index === 0 ? 'active' : ''}" onclick="changeMainImage('${img}', this)">
+                        `).join('')}
+                    </div>
+                ` : ''}
+            </div>
+            <div class="wheel-details-info">
+                <div class="wheel-header" style="margin-bottom: 1rem;">
+                    <span class="wheel-sku">${escapeHtml(wheel.sku)}</span>
+                    <span class="wheel-price">$${parseFloat(wheel.price || 0).toFixed(2)}</span>
+                </div>
+                <h3>${escapeHtml(wheel.model)}</h3>
+                <div class="wheel-condition ${conditionClass}" style="margin-bottom: 2rem;">
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                        <circle cx="6" cy="6" r="6"/>
+                    </svg>
+                    ${escapeHtml(wheel.condition || 'Good')} Condition
+                </div>
+                
+                <div class="wheel-details-specs">
+                    <div class="wheel-detail-row">
+                        <span class="wheel-detail-label">Size</span>
+                        <span class="wheel-detail-value">${escapeHtml(wheel.size)}</span>
+                    </div>
+                    <div class="wheel-detail-row">
+                        <span class="wheel-detail-label">Bolt Pattern</span>
+                        <span class="wheel-detail-value">${escapeHtml(wheel.boltPattern)}</span>
+                    </div>
+                    ${wheel.offset ? `
+                        <div class="wheel-detail-row">
+                            <span class="wheel-detail-label">Offset</span>
+                            <span class="wheel-detail-value">${escapeHtml(wheel.offset)}</span>
+                        </div>
+                    ` : ''}
+                    ${wheel.style ? `
+                        <div class="wheel-detail-row">
+                            <span class="wheel-detail-label">Style</span>
+                            <span class="wheel-detail-value">${escapeHtml(wheel.style)}</span>
+                        </div>
+                    ` : ''}
+                    <div class="wheel-detail-row">
+                        <span class="wheel-detail-label">Status</span>
+                        <span class="wheel-detail-value">${escapeHtml(wheel.status || 'Available')}</span>
+                    </div>
+                </div>
+                
+                ${wheel.notes ? `
+                    <div class="wheel-details-notes">
+                        <h4>Condition Notes</h4>
+                        <p>${escapeHtml(wheel.notes)}</p>
+                    </div>
+                ` : ''}
+                
+                <div class="wheel-details-actions">
+                    <button class="btn btn-secondary" onclick="closeWheelDetailsModal(); editWheel('${wheel.id}')">Edit</button>
+                    <button class="btn btn-danger" onclick="closeWheelDetailsModal(); deleteWheel('${wheel.id}')">Delete</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('wheel-details-modal').classList.add('active');
+}
+
+function changeMainImage(src, thumbnail) {
+    document.getElementById('main-image').src = src;
+    document.querySelectorAll('.wheel-details-thumbnail').forEach(t => t.classList.remove('active'));
+    thumbnail.classList.add('active');
+}
+
+function closeWheelDetailsModal() {
+    document.getElementById('wheel-details-modal').classList.remove('active');
+}
+
+// Stats Functions
+function updateStats() {
+    // OEM Parts Stats
+    const totalParts = oemParts.length;
+    const inStock = oemParts.filter(p => parseInt(p.quantity) > 0).length;
+    const lowStock = oemParts.filter(p => {
+        const qty = parseInt(p.quantity);
+        return qty > 0 && qty <= 5;
+    }).length;
+    
+    document.getElementById('oem-total').textContent = totalParts;
+    document.getElementById('oem-in-stock').textContent = inStock;
+    document.getElementById('oem-low-stock').textContent = lowStock;
+    
+    // Wheels Stats
+    const totalWheels = wheels.length;
+    const availableWheels = wheels.filter(w => w.status === 'Available').length;
+    const soldWheels = wheels.filter(w => w.status === 'Sold').length;
+    
+    document.getElementById('wheels-total').textContent = totalWheels;
+    document.getElementById('wheels-available').textContent = availableWheels;
+    document.getElementById('wheels-sold').textContent = soldWheels;
+}
+
+// Utility Functions
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function generateRandomSKU() {
+    return Math.random().toString(36).substring(2, 10).toUpperCase();
+}
+
+function closeAllModals() {
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.classList.remove('active');
+    });
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        closeAllModals();
+    }
+});

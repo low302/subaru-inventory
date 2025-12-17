@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subaru Parts Inventory - Alia Fabrication</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                        <circle cx="16" cy="16" r="14" fill="url(#logo-gradient)"/>
+                        <path d="M16 8L20 16L16 24L12 16L16 8Z" fill="white"/>
+                        <defs>
+                            <linearGradient id="logo-gradient" x1="0" y1="0" x2="32" y2="32">
+                                <stop offset="0%" stop-color="#0066CC"/>
+                                <stop offset="100%" stop-color="#003D7A"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                    <span>Alia Fabrication</span>
+                </div>
+                <nav class="nav">
+                    <button class="nav-btn active" data-view="oem-parts">OEM Parts</button>
+                    <button class="nav-btn" data-view="wheels">Wheel Take-Offs</button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+        <div class="container">
+            <!-- OEM Parts View -->
+            <div id="oem-parts-view" class="view active">
+                <div class="view-header">
+                    <div>
+                        <h1 class="view-title">OEM Parts Inventory</h1>
+                        <p class="view-subtitle">Genuine Subaru replacement parts</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="openAddPartModal()">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M10 4V16M4 10H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                        Add Part
+                    </button>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="--stat-color: #0066CC;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                <path d="M20 7H4C2.89543 7 2 7.89543 2 9V19C2 20.1046 2.89543 21 4 21H20C21.1046 21 22 20.1046 22 19V9C22 7.89543 21.1046 7 20 7Z" stroke="currentColor" stroke-width="2"/>
+                                <path d="M16 7V5C16 3.89543 15.1046 3 14 3H10C8.89543 3 8 3.89543 8 5V7" stroke="currentColor" stroke-width="2"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="stat-value" id="oem-total">0</div>
+                            <div class="stat-label">Total Parts</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="--stat-color: #00A86B;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                <path d="M9 11L12 14L22 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                <path d="M21 12V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V5C3 3.89543 3.89543 3 5 3H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="stat-value" id="oem-in-stock">0</div>
+                            <div class="stat-label">In Stock</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="--stat-color: #FF6B35;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
+                                <path d="M12 6V12L16 14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="stat-value" id="oem-low-stock">0</div>
+                            <div class="stat-label">Low Stock</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="search-bar">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <circle cx="8.5" cy="8.5" r="6.5" stroke="currentColor" stroke-width="2"/>
+                        <path d="M13 13L17 17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    <input type="text" id="oem-search" placeholder="Search by part number, name, or category...">
+                </div>
+
+                <div class="table-container">
+                    <table class="inventory-table">
+                        <thead>
+                            <tr>
+                                <th>Part Number</th>
+                                <th>Name</th>
+                                <th>Category</th>
+                                <th>Quantity</th>
+                                <th>Location</th>
+                                <th>Price</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="oem-parts-tbody">
+                            <!-- Data populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Wheels View -->
+            <div id="wheels-view" class="view">
+                <div class="view-header">
+                    <div>
+                        <h1 class="view-title">OEM Wheel Take-Offs</h1>
+                        <p class="view-subtitle">Individual inventory with unique SKUs</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="openAddWheelModal()">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M10 4V16M4 10H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                        Add Wheel Set
+                    </button>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="--stat-color: #0066CC;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
+                                <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/>
+                                <path d="M12 3V7M12 17V21M3 12H7M17 12H21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="stat-value" id="wheels-total">0</div>
+                            <div class="stat-label">Total Sets</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="--stat-color: #00A86B;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                <path d="M9 11L12 14L22 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                <path d="M21 12V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V5C3 3.89543 3.89543 3 5 3H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="stat-value" id="wheels-available">0</div>
+                            <div class="stat-label">Available</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="--stat-color: #9B59B6;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                                <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="stat-value" id="wheels-sold">0</div>
+                            <div class="stat-label">Sold</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="search-bar">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <circle cx="8.5" cy="8.5" r="6.5" stroke="currentColor" stroke-width="2"/>
+                        <path d="M13 13L17 17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    <input type="text" id="wheels-search" placeholder="Search by SKU, model, size, or style...">
+                </div>
+
+                <div id="wheels-grid" class="wheels-grid">
+                    <!-- Wheels populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- OEM Part Modal -->
+    <div id="part-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="part-modal-title">Add OEM Part</h2>
+                <button class="modal-close" onclick="closePartModal()">&times;</button>
+            </div>
+            <form id="part-form">
+                <input type="hidden" id="part-id">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="part-number">Part Number *</label>
+                        <input type="text" id="part-number" required placeholder="e.g., 84981AL00A">
+                    </div>
+                    <div class="form-group">
+                        <label for="part-name">Part Name *</label>
+                        <input type="text" id="part-name" required placeholder="e.g., Hood Latch">
+                    </div>
+                    <div class="form-group">
+                        <label for="part-category">Category</label>
+                        <input type="text" id="part-category" placeholder="e.g., Body Parts">
+                    </div>
+                    <div class="form-group">
+                        <label for="part-quantity">Quantity *</label>
+                        <input type="number" id="part-quantity" required min="0" value="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="part-location">Location</label>
+                        <input type="text" id="part-location" placeholder="e.g., Shelf A3">
+                    </div>
+                    <div class="form-group">
+                        <label for="part-price">Price ($)</label>
+                        <input type="number" id="part-price" step="0.01" min="0" placeholder="0.00">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="part-notes">Notes</label>
+                    <textarea id="part-notes" rows="3" placeholder="Additional information..."></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closePartModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Part</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Wheel Modal -->
+    <div id="wheel-modal" class="modal">
+        <div class="modal-content modal-wide">
+            <div class="modal-header">
+                <h2 id="wheel-modal-title">Add Wheel Set</h2>
+                <button class="modal-close" onclick="closeWheelModal()">&times;</button>
+            </div>
+            <form id="wheel-form" enctype="multipart/form-data">
+                <input type="hidden" id="wheel-id">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="wheel-sku">SKU *</label>
+                        <input type="text" id="wheel-sku" required placeholder="Auto-generated">
+                    </div>
+                    <div class="form-group">
+                        <label for="wheel-model">Vehicle Model *</label>
+                        <input type="text" id="wheel-model" required placeholder="e.g., 2023 Outback">
+                    </div>
+                    <div class="form-group">
+                        <label for="wheel-size">Size *</label>
+                        <input type="text" id="wheel-size" required placeholder="e.g., 18x7.5">
+                    </div>
+                    <div class="form-group">
+                        <label for="wheel-offset">Offset</label>
+                        <input type="text" id="wheel-offset" placeholder="e.g., +55mm">
+                    </div>
+                    <div class="form-group">
+                        <label for="wheel-bolt-pattern">Bolt Pattern *</label>
+                        <input type="text" id="wheel-bolt-pattern" required placeholder="e.g., 5x114.3">
+                    </div>
+                    <div class="form-group">
+                        <label for="wheel-style">Style Name</label>
+                        <input type="text" id="wheel-style" placeholder="e.g., 10-Spoke Alloy">
+                    </div>
+                    <div class="form-group">
+                        <label for="wheel-condition">Condition *</label>
+                        <select id="wheel-condition" required>
+                            <option value="">Select condition</option>
+                            <option value="Excellent">Excellent</option>
+                            <option value="Good">Good</option>
+                            <option value="Fair">Fair</option>
+                            <option value="Poor">Poor</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="wheel-price">Price ($) *</label>
+                        <input type="number" id="wheel-price" step="0.01" min="0" required placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label for="wheel-status">Status</label>
+                        <select id="wheel-status">
+                            <option value="Available">Available</option>
+                            <option value="Sold">Sold</option>
+                            <option value="Reserved">Reserved</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="wheel-notes">Notes</label>
+                    <textarea id="wheel-notes" rows="3" placeholder="Condition details, scratches, curb rash, etc..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="wheel-images">Images (up to 10)</label>
+                    <div class="file-upload">
+                        <input type="file" id="wheel-images" accept="image/*" multiple>
+                        <label for="wheel-images" class="file-upload-label">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                <path d="M21 15V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                <path d="M17 8L12 3L7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M12 3V15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            </svg>
+                            <span>Click to upload or drag and drop</span>
+                        </label>
+                    </div>
+                    <div id="image-preview" class="image-preview"></div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeWheelModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Wheel Set</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Wheel Details Modal -->
+    <div id="wheel-details-modal" class="modal">
+        <div class="modal-content modal-wide">
+            <div class="modal-header">
+                <h2>Wheel Details</h2>
+                <button class="modal-close" onclick="closeWheelDetailsModal()">&times;</button>
+            </div>
+            <div id="wheel-details-content">
+                <!-- Content populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
