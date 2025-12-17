@@ -19,7 +19,7 @@ async function initializeApp() {
 
 function setupEventListeners() {
     // Navigation
-    document.querySelectorAll('.nav-btn').forEach(btn => {
+    document.querySelectorAll('.nav-item').forEach(btn => {
         btn.addEventListener('click', () => switchView(btn.dataset.view));
     });
 
@@ -54,7 +54,7 @@ function switchView(view) {
     currentView = view;
     
     // Update navigation
-    document.querySelectorAll('.nav-btn').forEach(btn => {
+    document.querySelectorAll('.nav-item').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.view === view);
     });
     
