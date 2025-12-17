@@ -15,11 +15,25 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
-# Check if Docker Compose is installed
-if ! command -v docker-compose &> /dev/null; then
+# Check if Docker Compose is installed (try both old and new commands)
+DOCKER_COMPOSE_CMD=""
+if command -v docker-compose &> /dev/null; then
+    DOCKER_COMPOSE_CMD="docker-compose"
+elif docker compose version &> /dev/null; then
+    DOCKER_COMPOSE_CMD="docker compose"
+else
     echo "Error: Docker Compose is not installed."
     echo "Please install Docker Compose first: https://docs.docker.com/compose/install/"
     exit 1
+fi
+
+echo "Using: $DOCKER_COMPOSE_CMD"
+
+# Check if we need sudo
+SUDO=""
+if ! docker ps &> /dev/null; then
+    echo "Docker requires sudo permissions. You may be prompted for your password."
+    SUDO="sudo"
 fi
 
 # Create data directories if they don't exist
@@ -28,18 +42,18 @@ mkdir -p data uploads
 
 # Stop any existing containers
 echo "Stopping existing containers..."
-docker-compose down
+$SUDO $DOCKER_COMPOSE_CMD down
 
 # Build and start the container
 echo "Building and starting the inventory system..."
-docker-compose up -d --build
+$SUDO $DOCKER_COMPOSE_CMD up -d --build
 
 # Wait for the container to be ready
 echo "Waiting for the system to start..."
 sleep 3
 
 # Check if the container is running
-if [ "$(docker-compose ps -q)" ]; then
+if [ "$($SUDO $DOCKER_COMPOSE_CMD ps -q)" ]; then
     echo ""
     echo "=================================="
     echo "✓ System is running!"
@@ -58,14 +72,14 @@ if [ "$(docker-compose ps -q)" ]; then
     
     echo ""
     echo "To view logs:"
-    echo "  docker-compose logs -f"
+    echo "  $SUDO $DOCKER_COMPOSE_CMD logs -f"
     echo ""
     echo "To stop the system:"
-    echo "  docker-compose down"
+    echo "  $SUDO $DOCKER_COMPOSE_CMD down"
     echo ""
 else
     echo ""
     echo "Error: Failed to start the container."
-    echo "Check logs with: docker-compose logs"
+    echo "Check logs with: $SUDO $DOCKER_COMPOSE_CMD logs"
     exit 1
 fi

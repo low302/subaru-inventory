@@ -128,29 +128,43 @@ Both inventories have real-time search:
 
 ## Docker Commands
 
+**Note**: If you get permission errors, prefix commands with `sudo`:
+
 ### Start the container
 ```bash
+# Modern Docker Compose (v2.x+)
+docker compose up -d
+# OR with sudo if needed
+sudo docker compose up -d
+
+# Older Docker Compose (v1.x)
 docker-compose up -d
 ```
 
 ### Stop the container
 ```bash
-docker-compose down
+sudo docker compose down
 ```
 
 ### View logs
 ```bash
-docker-compose logs -f
+sudo docker compose logs -f
 ```
 
 ### Restart the container
 ```bash
-docker-compose restart
+sudo docker compose restart
 ```
 
 ### Rebuild after code changes
 ```bash
-docker-compose up -d --build
+sudo docker compose up -d --build
+```
+
+### Alternative: Add your user to docker group (to avoid sudo)
+```bash
+sudo usermod -aG docker $USER
+# Then logout and login again
 ```
 
 ## Backup

@@ -7,12 +7,14 @@
 # Navigate to the project directory
 cd subaru-inventory
 
-# Run the startup script
+# Run the startup script (it will detect if sudo is needed)
 ./start.sh
 
 # OR manually with Docker Compose
-docker-compose up -d
+sudo docker compose up -d
 ```
+
+**Note**: If you get permission errors, use `sudo` before docker commands.
 
 ### Step 2: Access the Application
 Open your web browser and go to:
@@ -75,24 +77,26 @@ All data is stored in two folders:
 
 ## Common Commands
 
+**Note**: Add `sudo` before commands if you get permission errors.
+
 ### Start the system
 ```bash
-docker-compose up -d
+sudo docker compose up -d
 ```
 
 ### Stop the system
 ```bash
-docker-compose down
+sudo docker compose down
 ```
 
 ### View logs (troubleshooting)
 ```bash
-docker-compose logs -f
+sudo docker compose logs -f
 ```
 
 ### Restart the system
 ```bash
-docker-compose restart
+sudo docker compose restart
 ```
 
 ### Backup your data
@@ -126,9 +130,13 @@ Look for your local IP (usually starts with 192.168.x.x or 10.0.x.x)
 ## Troubleshooting
 
 ### Can't access the system?
-- Check if container is running: `docker-compose ps`
+- Check if container is running: `sudo docker compose ps`
 - Verify port 3000 is not in use
 - Check firewall settings
+
+### Permission denied errors?
+- Use `sudo` before docker commands
+- OR add your user to docker group: `sudo usermod -aG docker $USER` (then logout/login)
 
 ### Images not uploading?
 - Ensure `uploads/` directory exists
@@ -137,8 +145,8 @@ Look for your local IP (usually starts with 192.168.x.x or 10.0.x.x)
 
 ### Data not saving?
 - Check `data/` directory permissions
-- View logs: `docker-compose logs`
-- Restart container: `docker-compose restart`
+- View logs: `sudo docker compose logs`
+- Restart container: `sudo docker compose restart`
 
 ## Support
 
