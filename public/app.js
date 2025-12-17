@@ -652,12 +652,15 @@ function updateStats() {
     document.getElementById('oem-low-stock').textContent = lowStock;
     
     // Wheels Stats
-    const totalWheels = wheels.length;
-    const availableWheels = wheels.filter(w => w.status === 'Available').length;
+    const totalValue = wheels.reduce((sum, wheel) => {
+        return sum + (parseFloat(wheel.price) || 0);
+    }, 0);
+    
+    const notSold = wheels.filter(w => w.status !== 'Sold').length;
     const soldWheels = wheels.filter(w => w.status === 'Sold').length;
     
-    document.getElementById('wheels-total').textContent = totalWheels;
-    document.getElementById('wheels-available').textContent = availableWheels;
+    document.getElementById('wheels-total-value').textContent = `$${totalValue.toFixed(2)}`;
+    document.getElementById('wheels-not-sold').textContent = notSold;
     document.getElementById('wheels-sold').textContent = soldWheels;
 }
 
