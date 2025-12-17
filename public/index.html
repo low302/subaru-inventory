@@ -128,7 +128,7 @@
                         <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                             <path d="M10 4V16M4 10H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                         </svg>
-                        Add Wheel Set
+                        Add Wheel
                     </button>
                 </div>
 
@@ -143,7 +143,7 @@
                         </div>
                         <div>
                             <div class="stat-value" id="wheels-total">0</div>
-                            <div class="stat-label">Total Sets</div>
+                            <div class="stat-label">Total Wheels</div>
                         </div>
                     </div>
                     <div class="stat-card">
@@ -239,35 +239,88 @@
     <div id="wheel-modal" class="modal">
         <div class="modal-content modal-wide">
             <div class="modal-header">
-                <h2 id="wheel-modal-title">Add Wheel Set</h2>
+                <h2 id="wheel-modal-title">Add Wheel</h2>
                 <button class="modal-close" onclick="closeWheelModal()">&times;</button>
             </div>
             <form id="wheel-form" enctype="multipart/form-data">
                 <input type="hidden" id="wheel-id">
+                
+                <div class="form-group">
+                    <label for="wheel-sku">SKU (Auto-generated)</label>
+                    <input type="text" id="wheel-sku" readonly placeholder="Will be generated after saving" style="background: var(--gray-50); cursor: not-allowed;">
+                </div>
+                
                 <div class="form-grid">
                     <div class="form-group">
-                        <label for="wheel-sku">SKU *</label>
-                        <input type="text" id="wheel-sku" required placeholder="Auto-generated">
+                        <label for="wheel-year">Year *</label>
+                        <select id="wheel-year" required onchange="generateWheelSKU()">
+                            <option value="">Select year</option>
+                            <option value="2026">2026</option>
+                            <option value="2025">2025</option>
+                            <option value="2024">2024</option>
+                            <option value="2023">2023</option>
+                            <option value="2022">2022</option>
+                            <option value="2021">2021</option>
+                            <option value="2020">2020</option>
+                        </select>
                     </div>
                     <div class="form-group">
-                        <label for="wheel-model">Vehicle Model *</label>
-                        <input type="text" id="wheel-model" required placeholder="e.g., 2023 Outback">
+                        <label for="wheel-make">Make *</label>
+                        <select id="wheel-make" required onchange="handleMakeChange()">
+                            <option value="Subaru">Subaru</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="wheel-make-other-group" style="display: none;">
+                        <label for="wheel-make-other">Other Make</label>
+                        <input type="text" id="wheel-make-other" placeholder="Enter make" onchange="generateWheelSKU()">
+                    </div>
+                    <div class="form-group">
+                        <label for="wheel-model">Model *</label>
+                        <select id="wheel-model" required onchange="handleModelChange()">
+                            <option value="">Select model</option>
+                            <option value="Outback">Outback</option>
+                            <option value="Forester">Forester</option>
+                            <option value="Ascent">Ascent</option>
+                            <option value="Crosstrek">Crosstrek</option>
+                            <option value="WRX">WRX</option>
+                            <option value="BRZ">BRZ</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="wheel-model-other-group" style="display: none;">
+                        <label for="wheel-model-other">Other Model</label>
+                        <input type="text" id="wheel-model-other" placeholder="Enter model" onchange="generateWheelSKU()">
+                    </div>
+                    <div class="form-group">
+                        <label for="wheel-trim">Trim</label>
+                        <select id="wheel-trim" onchange="generateWheelSKU()">
+                            <option value="">Select trim (optional)</option>
+                            <option value="Base">Base</option>
+                            <option value="Premium">Premium</option>
+                            <option value="Limited">Limited</option>
+                            <option value="Sport">Sport</option>
+                            <option value="Sport Hybrid">Sport Hybrid</option>
+                            <option value="Limited Hybrid">Limited Hybrid</option>
+                            <option value="Touring">Touring</option>
+                            <option value="Touring Onyx Edition">Touring Onyx Edition</option>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label for="wheel-size">Size *</label>
-                        <input type="text" id="wheel-size" required placeholder="e.g., 18x7.5">
+                        <input type="text" id="wheel-size" required placeholder="e.g., 18x7.5" onchange="generateWheelSKU()">
+                    </div>
+                    <div class="form-group">
+                        <label for="wheel-bolt-pattern">Bolt Pattern *</label>
+                        <select id="wheel-bolt-pattern" required onchange="generateWheelSKU()">
+                            <option value="">Select bolt pattern</option>
+                            <option value="5x100">5x100</option>
+                            <option value="5x114.3">5x114.3</option>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label for="wheel-offset">Offset</label>
                         <input type="text" id="wheel-offset" placeholder="e.g., +55mm">
-                    </div>
-                    <div class="form-group">
-                        <label for="wheel-bolt-pattern">Bolt Pattern *</label>
-                        <input type="text" id="wheel-bolt-pattern" required placeholder="e.g., 5x114.3">
-                    </div>
-                    <div class="form-group">
-                        <label for="wheel-style">Style Name</label>
-                        <input type="text" id="wheel-style" placeholder="e.g., 10-Spoke Alloy">
                     </div>
                     <div class="form-group">
                         <label for="wheel-condition">Condition *</label>
@@ -313,7 +366,7 @@
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeWheelModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Wheel Set</button>
+                    <button type="submit" class="btn btn-primary">Save Wheel</button>
                 </div>
             </form>
         </div>

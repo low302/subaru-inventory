@@ -245,7 +245,7 @@ function renderWheels(filteredWheels = null) {
                     <path d="M12 3V7M12 17V21M3 12H7M17 12H21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                 </svg>
                 <h3>No wheels found</h3>
-                <p>Add your first wheel set to get started</p>
+                <p>Add your first wheel to get started</p>
             </div>
         `;
         return;
@@ -258,15 +258,23 @@ function renderWheels(filteredWheels = null) {
         
         const conditionClass = wheel.condition ? wheel.condition.toLowerCase() : 'good';
         
+        // Build display name: Year Make Model Trim
+        let displayName = '';
+        if (wheel.year) displayName += wheel.year + ' ';
+        if (wheel.make) displayName += wheel.make + ' ';
+        if (wheel.model) displayName += wheel.model;
+        if (wheel.trim) displayName += ' ' + wheel.trim;
+        displayName = displayName.trim() || 'Wheel';
+        
         return `
             <div class="wheel-card" onclick="viewWheelDetails('${wheel.id}')">
-                <img src="${mainImage}" alt="${escapeHtml(wheel.model)}" class="wheel-image">
+                <img src="${mainImage}" alt="${escapeHtml(displayName)}" class="wheel-image">
                 <div class="wheel-content">
                     <div class="wheel-header">
                         <span class="wheel-sku">${escapeHtml(wheel.sku)}</span>
                         <span class="wheel-price">$${parseFloat(wheel.price || 0).toFixed(2)}</span>
                     </div>
-                    <div class="wheel-model">${escapeHtml(wheel.model)}</div>
+                    <div class="wheel-model">${escapeHtml(displayName)}</div>
                     <div class="wheel-specs">
                         <span class="wheel-spec">${escapeHtml(wheel.size)}</span>
                         <span class="wheel-spec">${escapeHtml(wheel.boltPattern)}</span>
@@ -304,11 +312,14 @@ function filterWheels(searchTerm) {
 function openAddWheelModal() {
     currentEditId = null;
     selectedImages = [];
-    document.getElementById('wheel-modal-title').textContent = 'Add Wheel Set';
+    document.getElementById('wheel-modal-title').textContent = 'Add Wheel';
     document.getElementById('wheel-form').reset();
     document.getElementById('wheel-id').value = '';
-    document.getElementById('wheel-sku').value = `WHEEL-${generateRandomSKU()}`;
+    document.getElementById('wheel-sku').value = '';
+    document.getElementById('wheel-make').value = 'Subaru';
     document.getElementById('wheel-status').value = 'Available';
+    document.getElementById('wheel-make-other-group').style.display = 'none';
+    document.getElementById('wheel-model-other-group').style.display = 'none';
     document.getElementById('image-preview').innerHTML = '';
     document.getElementById('wheel-modal').classList.add('active');
 }
@@ -319,14 +330,39 @@ function editWheel(id) {
     
     currentEditId = id;
     selectedImages = [];
-    document.getElementById('wheel-modal-title').textContent = 'Edit Wheel Set';
+    document.getElementById('wheel-modal-title').textContent = 'Edit Wheel';
     document.getElementById('wheel-id').value = id;
     document.getElementById('wheel-sku').value = wheel.sku;
-    document.getElementById('wheel-model').value = wheel.model;
+    
+    // Set year, make, model fields
+    document.getElementById('wheel-year').value = wheel.year || '';
+    document.getElementById('wheel-make').value = wheel.make || 'Subaru';
+    
+    // Handle "Other" make
+    if (wheel.make && wheel.make !== 'Subaru') {
+        document.getElementById('wheel-make').value = 'Other';
+        document.getElementById('wheel-make-other-group').style.display = 'block';
+        document.getElementById('wheel-make-other').value = wheel.make;
+    } else {
+        document.getElementById('wheel-make-other-group').style.display = 'none';
+    }
+    
+    document.getElementById('wheel-model').value = wheel.model || '';
+    
+    // Handle "Other" model
+    const modelOptions = ['Outback', 'Forester', 'Ascent', 'Crosstrek', 'WRX', 'BRZ', 'Other'];
+    if (wheel.model && !modelOptions.includes(wheel.model)) {
+        document.getElementById('wheel-model').value = 'Other';
+        document.getElementById('wheel-model-other-group').style.display = 'block';
+        document.getElementById('wheel-model-other').value = wheel.model;
+    } else {
+        document.getElementById('wheel-model-other-group').style.display = 'none';
+    }
+    
+    document.getElementById('wheel-trim').value = wheel.trim || '';
     document.getElementById('wheel-size').value = wheel.size;
     document.getElementById('wheel-offset').value = wheel.offset || '';
     document.getElementById('wheel-bolt-pattern').value = wheel.boltPattern;
-    document.getElementById('wheel-style').value = wheel.style || '';
     document.getElementById('wheel-condition').value = wheel.condition || 'Good';
     document.getElementById('wheel-price').value = wheel.price || '';
     document.getElementById('wheel-status').value = wheel.status || 'Available';
@@ -382,13 +418,29 @@ async function handleWheelSubmit(e) {
     
     const formData = new FormData();
     
-    // Add text fields
-    formData.append('sku', document.getElementById('wheel-sku').value);
-    formData.append('model', document.getElementById('wheel-model').value);
+    // Get make and model values (handle "Other" options)
+    const make = document.getElementById('wheel-make').value;
+    const actualMake = make === 'Other' ? document.getElementById('wheel-make-other').value : make;
+    
+    const model = document.getElementById('wheel-model').value;
+    const actualModel = model === 'Other' ? document.getElementById('wheel-model-other').value : model;
+    
+    // Generate SKU if it's empty (new wheel)
+    let sku = document.getElementById('wheel-sku').value;
+    if (!sku || !currentEditId) {
+        generateWheelSKU();
+        sku = document.getElementById('wheel-sku').value;
+    }
+    
+    // Add all fields
+    formData.append('sku', sku);
+    formData.append('year', document.getElementById('wheel-year').value);
+    formData.append('make', actualMake);
+    formData.append('model', actualModel);
+    formData.append('trim', document.getElementById('wheel-trim').value);
     formData.append('size', document.getElementById('wheel-size').value);
     formData.append('offset', document.getElementById('wheel-offset').value);
     formData.append('boltPattern', document.getElementById('wheel-bolt-pattern').value);
-    formData.append('style', document.getElementById('wheel-style').value);
     formData.append('condition', document.getElementById('wheel-condition').value);
     formData.append('price', document.getElementById('wheel-price').value);
     formData.append('status', document.getElementById('wheel-status').value);
@@ -420,7 +472,7 @@ async function handleWheelSubmit(e) {
 }
 
 async function deleteWheel(id) {
-    if (!confirm('Are you sure you want to delete this wheel set? All associated images will be removed.')) return;
+    if (!confirm('Are you sure you want to delete this wheel? All associated images will be removed.')) return;
     
     try {
         const response = await fetch(`/api/wheels/${id}`, { method: 'DELETE' });
@@ -450,10 +502,18 @@ function viewWheelDetails(id) {
     
     const conditionClass = wheel.condition ? wheel.condition.toLowerCase() : 'good';
     
+    // Build display name
+    let displayName = '';
+    if (wheel.year) displayName += wheel.year + ' ';
+    if (wheel.make) displayName += wheel.make + ' ';
+    if (wheel.model) displayName += wheel.model;
+    if (wheel.trim) displayName += ' ' + wheel.trim;
+    displayName = displayName.trim() || 'Wheel';
+    
     content.innerHTML = `
         <div class="wheel-details-grid">
             <div class="wheel-details-images">
-                <img src="${images[0]}" alt="${escapeHtml(wheel.model)}" class="wheel-details-main-image" id="main-image">
+                <img src="${images[0]}" alt="${escapeHtml(displayName)}" class="wheel-details-main-image" id="main-image">
                 ${images.length > 1 ? `
                     <div class="wheel-details-thumbnails">
                         ${images.map((img, index) => `
@@ -467,7 +527,7 @@ function viewWheelDetails(id) {
                     <span class="wheel-sku">${escapeHtml(wheel.sku)}</span>
                     <span class="wheel-price">$${parseFloat(wheel.price || 0).toFixed(2)}</span>
                 </div>
-                <h3>${escapeHtml(wheel.model)}</h3>
+                <h3>${escapeHtml(displayName)}</h3>
                 <div class="wheel-condition ${conditionClass}" style="margin-bottom: 2rem;">
                     <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
                         <circle cx="6" cy="6" r="6"/>
@@ -476,6 +536,30 @@ function viewWheelDetails(id) {
                 </div>
                 
                 <div class="wheel-details-specs">
+                    ${wheel.year ? `
+                        <div class="wheel-detail-row">
+                            <span class="wheel-detail-label">Year</span>
+                            <span class="wheel-detail-value">${escapeHtml(wheel.year)}</span>
+                        </div>
+                    ` : ''}
+                    ${wheel.make ? `
+                        <div class="wheel-detail-row">
+                            <span class="wheel-detail-label">Make</span>
+                            <span class="wheel-detail-value">${escapeHtml(wheel.make)}</span>
+                        </div>
+                    ` : ''}
+                    ${wheel.model ? `
+                        <div class="wheel-detail-row">
+                            <span class="wheel-detail-label">Model</span>
+                            <span class="wheel-detail-value">${escapeHtml(wheel.model)}</span>
+                        </div>
+                    ` : ''}
+                    ${wheel.trim ? `
+                        <div class="wheel-detail-row">
+                            <span class="wheel-detail-label">Trim</span>
+                            <span class="wheel-detail-value">${escapeHtml(wheel.trim)}</span>
+                        </div>
+                    ` : ''}
                     <div class="wheel-detail-row">
                         <span class="wheel-detail-label">Size</span>
                         <span class="wheel-detail-value">${escapeHtml(wheel.size)}</span>
@@ -488,12 +572,6 @@ function viewWheelDetails(id) {
                         <div class="wheel-detail-row">
                             <span class="wheel-detail-label">Offset</span>
                             <span class="wheel-detail-value">${escapeHtml(wheel.offset)}</span>
-                        </div>
-                    ` : ''}
-                    ${wheel.style ? `
-                        <div class="wheel-detail-row">
-                            <span class="wheel-detail-label">Style</span>
-                            <span class="wheel-detail-value">${escapeHtml(wheel.style)}</span>
                         </div>
                     ` : ''}
                     <div class="wheel-detail-row">
@@ -563,6 +641,74 @@ function escapeHtml(text) {
 
 function generateRandomSKU() {
     return Math.random().toString(36).substring(2, 10).toUpperCase();
+}
+
+function generateWheelSKU() {
+    // Get values from form
+    const year = document.getElementById('wheel-year').value;
+    const make = document.getElementById('wheel-make').value;
+    const makeOther = document.getElementById('wheel-make-other').value;
+    const model = document.getElementById('wheel-model').value;
+    const modelOther = document.getElementById('wheel-model-other').value;
+    const size = document.getElementById('wheel-size').value;
+    const boltPattern = document.getElementById('wheel-bolt-pattern').value;
+    
+    // Don't generate if required fields are missing
+    if (!year || !model || !size || !boltPattern) {
+        document.getElementById('wheel-sku').value = '';
+        return;
+    }
+    
+    // Use actual make/model or "other" values
+    const actualMake = make === 'Other' ? makeOther : make;
+    const actualModel = model === 'Other' ? modelOther : model;
+    
+    if (!actualMake || !actualModel) {
+        document.getElementById('wheel-sku').value = '';
+        return;
+    }
+    
+    // Format: SPP-[YEAR][MAKE_ABBR][MODEL_ABBR]-[SIZE]-[BOLT]-[RANDOM]
+    const makeAbbr = actualMake.substring(0, 3).toUpperCase();
+    const modelAbbr = actualModel.substring(0, 3).toUpperCase();
+    const sizeClean = size.replace(/[^0-9x.]/gi, ''); // Remove non-alphanumeric except x and .
+    const boltClean = boltPattern.replace(/[^0-9x.]/gi, '');
+    const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+    
+    const sku = `SPP-${year}${makeAbbr}${modelAbbr}-${sizeClean}-${boltClean}-${random}`;
+    document.getElementById('wheel-sku').value = sku;
+}
+
+function handleMakeChange() {
+    const make = document.getElementById('wheel-make').value;
+    const otherGroup = document.getElementById('wheel-make-other-group');
+    
+    if (make === 'Other') {
+        otherGroup.style.display = 'block';
+        document.getElementById('wheel-make-other').required = true;
+    } else {
+        otherGroup.style.display = 'none';
+        document.getElementById('wheel-make-other').required = false;
+        document.getElementById('wheel-make-other').value = '';
+    }
+    
+    generateWheelSKU();
+}
+
+function handleModelChange() {
+    const model = document.getElementById('wheel-model').value;
+    const otherGroup = document.getElementById('wheel-model-other-group');
+    
+    if (model === 'Other') {
+        otherGroup.style.display = 'block';
+        document.getElementById('wheel-model-other').required = true;
+    } else {
+        otherGroup.style.display = 'none';
+        document.getElementById('wheel-model-other').required = false;
+        document.getElementById('wheel-model-other').value = '';
+    }
+    
+    generateWheelSKU();
 }
 
 function closeAllModals() {
