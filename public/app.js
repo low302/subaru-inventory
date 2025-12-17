@@ -85,12 +85,9 @@ function renderOEMParts(filteredParts = null) {
             <tr>
                 <td colspan="7">
                     <div class="empty-state">
-                        <svg viewBox="0 0 24 24" fill="none">
-                            <path d="M20 7H4C2.89543 7 2 7.89543 2 9V19C2 20.1046 2.89543 21 4 21H20C21.1046 21 22 20.1046 22 19V9C22 7.89543 21.1046 7 20 7Z" stroke="currentColor" stroke-width="2"/>
-                            <path d="M16 7V5C16 3.89543 15.1046 3 14 3H10C8.89543 3 8 3.89543 8 5V7" stroke="currentColor" stroke-width="2"/>
-                        </svg>
-                        <h3>No parts found</h3>
-                        <p>Add your first OEM part to get started</p>
+                        <span class="material-symbols-outlined">inventory_2</span>
+                        <h3 class="md-headline-small">No parts found</h3>
+                        <p class="md-body-medium">Add your first OEM part to get started</p>
                     </div>
                 </td>
             </tr>
@@ -100,14 +97,14 @@ function renderOEMParts(filteredParts = null) {
     
     tbody.innerHTML = parts.map(part => {
         const quantity = parseInt(part.quantity) || 0;
-        let statusClass = 'status-in-stock';
+        let badgeClass = 'md-badge-secondary';
         let statusText = 'In Stock';
         
         if (quantity === 0) {
-            statusClass = 'status-out-of-stock';
+            badgeClass = 'md-badge-error';
             statusText = 'Out of Stock';
         } else if (quantity <= 5) {
-            statusClass = 'status-low-stock';
+            badgeClass = 'md-badge-tertiary';
             statusText = 'Low Stock';
         }
         
@@ -116,13 +113,17 @@ function renderOEMParts(filteredParts = null) {
                 <td><strong>${escapeHtml(part.partNumber)}</strong></td>
                 <td>${escapeHtml(part.partName)}</td>
                 <td>${escapeHtml(part.category || '-')}</td>
-                <td><span class="status-badge ${statusClass}">${quantity} ${statusText}</span></td>
+                <td><span class="md-badge ${badgeClass}">${quantity} ${statusText}</span></td>
                 <td>${escapeHtml(part.location || '-')}</td>
                 <td><strong>$${parseFloat(part.price || 0).toFixed(2)}</strong></td>
                 <td>
                     <div class="table-actions">
-                        <button class="btn btn-sm btn-secondary" onclick="editPart('${part.id}')">Edit</button>
-                        <button class="btn btn-sm btn-danger" onclick="deletePart('${part.id}')">Delete</button>
+                        <button class="md-icon-button" onclick="editPart('${part.id}')" title="Edit">
+                            <span class="material-symbols-outlined">edit</span>
+                        </button>
+                        <button class="md-icon-button" onclick="deletePart('${part.id}')" title="Delete">
+                            <span class="material-symbols-outlined">delete</span>
+                        </button>
                     </div>
                 </td>
             </tr>
@@ -241,13 +242,9 @@ function renderWheels(filteredWheels = null) {
             <tr>
                 <td colspan="9">
                     <div class="empty-state">
-                        <svg viewBox="0 0 24 24" fill="none">
-                            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
-                            <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/>
-                            <path d="M12 3V7M12 17V21M3 12H7M17 12H21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                        </svg>
-                        <h3>No wheels found</h3>
-                        <p>Add your first wheel to get started</p>
+                        <span class="material-symbols-outlined">tire_repair</span>
+                        <h3 class="md-headline-small">No wheels found</h3>
+                        <p class="md-body-medium">Add your first wheel to get started</p>
                     </div>
                 </td>
             </tr>
@@ -258,9 +255,7 @@ function renderWheels(filteredWheels = null) {
     tbody.innerHTML = wheelsToRender.map(wheel => {
         const mainImage = wheel.images && wheel.images.length > 0 
             ? wheel.images[0] 
-            : 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60"%3E%3Crect fill="%23f1f5f9" width="60" height="60"/%3E%3Ctext fill="%2394a3b8" font-family="sans-serif" font-size="10" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3ENo Image%3C/text%3E%3C/svg%3E';
-        
-        const conditionClass = wheel.condition ? wheel.condition.toLowerCase() : 'good';
+            : 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60"%3E%3Crect fill="%23e6e9e8" width="60" height="60"/%3E%3Ctext fill="%236f7979" font-family="sans-serif" font-size="10" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3ENo Image%3C/text%3E%3C/svg%3E';
         
         // Build display name: Year Make Model Trim
         let displayName = '';
@@ -270,8 +265,17 @@ function renderWheels(filteredWheels = null) {
         if (wheel.trim) displayName += ' ' + wheel.trim;
         displayName = displayName.trim() || 'Wheel';
         
+        // Condition badge
+        let conditionBadge = 'md-badge-secondary';
+        if (wheel.condition === 'Excellent') conditionBadge = 'md-badge-secondary';
+        else if (wheel.condition === 'Good') conditionBadge = 'md-badge-primary';
+        else if (wheel.condition === 'Fair') conditionBadge = 'md-badge-tertiary';
+        else if (wheel.condition === 'Poor') conditionBadge = 'md-badge-error';
+        
         // Status badge
-        const statusClass = `status-${(wheel.status || 'Available').toLowerCase().replace(' ', '-')}`;
+        let statusBadge = 'md-badge-secondary';
+        if (wheel.status === 'Sold') statusBadge = 'md-badge-error';
+        else if (wheel.status === 'Reserved') statusBadge = 'md-badge-tertiary';
         
         return `
             <tr>
@@ -282,29 +286,23 @@ function renderWheels(filteredWheels = null) {
                 <td>${escapeHtml(displayName)}</td>
                 <td>${escapeHtml(wheel.size)}</td>
                 <td>${escapeHtml(wheel.boltPattern)}</td>
-                <td>
-                    <span class="status-badge wheel-condition ${conditionClass}" style="display: inline-flex; align-items: center; gap: 0.25rem;">
-                        <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor">
-                            <circle cx="4" cy="4" r="4"/>
-                        </svg>
-                        ${escapeHtml(wheel.condition || 'Good')}
-                    </span>
-                </td>
+                <td><span class="md-badge ${conditionBadge}">${escapeHtml(wheel.condition || 'Good')}</span></td>
                 <td><strong>$${parseFloat(wheel.price || 0).toFixed(2)}</strong></td>
-                <td><span class="status-badge ${statusClass}">${escapeHtml(wheel.status || 'Available')}</span></td>
+                <td><span class="md-badge ${statusBadge}">${escapeHtml(wheel.status || 'Available')}</span></td>
                 <td>
                     <div class="table-actions">
-                        <button class="btn btn-sm btn-secondary" onclick="printQRLabel('${wheel.id}')" title="Print QR Label">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                                <rect x="6" y="6" width="4" height="4" fill="currentColor"/>
-                                <rect x="14" y="6" width="4" height="4" fill="currentColor"/>
-                                <rect x="6" y="14" width="4" height="4" fill="currentColor"/>
-                                <path d="M14 14h1m0 0h1m-1 0v1m0-1v-1m2 0h1m0 2h-1m1 2h-1m-1 0h-1m0-2h1" stroke="currentColor" stroke-width="1"/>
-                            </svg>
+                        <button class="md-icon-button" onclick="printQRLabel('${wheel.id}')" title="Print QR Label">
+                            <span class="material-symbols-outlined">qr_code</span>
                         </button>
-                        <button class="btn btn-sm btn-secondary" onclick="viewWheelDetails('${wheel.id}')">View</button>
-                        <button class="btn btn-sm btn-secondary" onclick="editWheel('${wheel.id}')">Edit</button>
-                        <button class="btn btn-sm btn-danger" onclick="deleteWheel('${wheel.id}')">Delete</button>
+                        <button class="md-icon-button" onclick="viewWheelDetails('${wheel.id}')" title="View">
+                            <span class="material-symbols-outlined">visibility</span>
+                        </button>
+                        <button class="md-icon-button" onclick="editWheel('${wheel.id}')" title="Edit">
+                            <span class="material-symbols-outlined">edit</span>
+                        </button>
+                        <button class="md-icon-button" onclick="deleteWheel('${wheel.id}')" title="Delete">
+                            <span class="material-symbols-outlined">delete</span>
+                        </button>
                     </div>
                 </td>
             </tr>
