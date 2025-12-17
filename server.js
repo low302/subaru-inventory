@@ -3,6 +3,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
+const QRCode = require('qrcode');
 
 const app = express();
 const PORT = 3000;
@@ -209,6 +210,80 @@ app.delete('/api/wheels/:id/image', (req, res) => {
     wheel.images = wheel.images.filter(img => img !== imagePath);
     writeData(WHEELS_FILE, wheels);
     res.json(wheel);
+});
+
+// QR Code Label Generation
+app.get('/api/wheels/:id/qr-label', async (req, res) => {
+    const wheels = readData(WHEELS_FILE);
+    const wheel = wheels.find(w => w.id === req.params.id);
+    
+    if (!wheel) {
+        return res.status(404).json({ error: 'Wheel not found' });
+    }
+    
+    try {
+        // Generate QR code as data URL
+        const qrData = wheel.sku; // You can include more data if needed
+        const qrCodeDataURL = await QRCode.toDataURL(qrData, {
+            width: 400,
+            margin: 1,
+            color: {
+                dark: '#000000',
+                light: '#FFFFFF'
+            }
+        });
+        
+        // Create HTML for 2x2 thermal label (576x576 pixels at 288 DPI)
+        const labelHTML = `
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        @page {
+            size: 2in 2in;
+            margin: 0;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            width: 2in;
+            height: 2in;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: Arial, sans-serif;
+            padding: 0.1in;
+            background: white;
+        }
+        .qr-code {
+            width: 1.5in;
+            height: 1.5in;
+            margin-bottom: 0.05in;
+        }
+        .sku {
+            font-size: 11pt;
+            font-weight: bold;
+            text-align: center;
+            word-break: break-all;
+            line-height: 1.2;
+        }
+    </style>
+</head>
+<body>
+    <img src="${qrCodeDataURL}" class="qr-code" alt="QR Code">
+    <div class="sku">${wheel.sku}</div>
+</body>
+</html>`;
+        
+        res.send(labelHTML);
+    } catch (error) {
+        console.error('Error generating QR label:', error);
+        res.status(500).json({ error: 'Failed to generate QR label' });
+    }
 });
 
 // Start server

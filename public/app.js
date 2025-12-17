@@ -233,28 +233,32 @@ async function loadWheels() {
 }
 
 function renderWheels(filteredWheels = null) {
-    const grid = document.getElementById('wheels-grid');
+    const tbody = document.getElementById('wheels-tbody');
     const wheelsToRender = filteredWheels || wheels;
     
     if (wheelsToRender.length === 0) {
-        grid.innerHTML = `
-            <div class="empty-state" style="grid-column: 1 / -1;">
-                <svg viewBox="0 0 24 24" fill="none">
-                    <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
-                    <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/>
-                    <path d="M12 3V7M12 17V21M3 12H7M17 12H21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                </svg>
-                <h3>No wheels found</h3>
-                <p>Add your first wheel to get started</p>
-            </div>
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="9">
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none">
+                            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
+                            <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/>
+                            <path d="M12 3V7M12 17V21M3 12H7M17 12H21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                        <h3>No wheels found</h3>
+                        <p>Add your first wheel to get started</p>
+                    </div>
+                </td>
+            </tr>
         `;
         return;
     }
     
-    grid.innerHTML = wheelsToRender.map(wheel => {
+    tbody.innerHTML = wheelsToRender.map(wheel => {
         const mainImage = wheel.images && wheel.images.length > 0 
             ? wheel.images[0] 
-            : 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 240"%3E%3Crect fill="%23f1f5f9" width="400" height="240"/%3E%3Ctext fill="%2394a3b8" font-family="sans-serif" font-size="48" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3ENo Image%3C/text%3E%3C/svg%3E';
+            : 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60"%3E%3Crect fill="%23f1f5f9" width="60" height="60"/%3E%3Ctext fill="%2394a3b8" font-family="sans-serif" font-size="10" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3ENo Image%3C/text%3E%3C/svg%3E';
         
         const conditionClass = wheel.condition ? wheel.condition.toLowerCase() : 'good';
         
@@ -266,32 +270,44 @@ function renderWheels(filteredWheels = null) {
         if (wheel.trim) displayName += ' ' + wheel.trim;
         displayName = displayName.trim() || 'Wheel';
         
+        // Status badge
+        const statusClass = `status-${(wheel.status || 'Available').toLowerCase().replace(' ', '-')}`;
+        
         return `
-            <div class="wheel-card" onclick="viewWheelDetails('${wheel.id}')">
-                <img src="${mainImage}" alt="${escapeHtml(displayName)}" class="wheel-image">
-                <div class="wheel-content">
-                    <div class="wheel-header">
-                        <span class="wheel-sku">${escapeHtml(wheel.sku)}</span>
-                        <span class="wheel-price">$${parseFloat(wheel.price || 0).toFixed(2)}</span>
-                    </div>
-                    <div class="wheel-model">${escapeHtml(displayName)}</div>
-                    <div class="wheel-specs">
-                        <span class="wheel-spec">${escapeHtml(wheel.size)}</span>
-                        <span class="wheel-spec">${escapeHtml(wheel.boltPattern)}</span>
-                        ${wheel.offset ? `<span class="wheel-spec">${escapeHtml(wheel.offset)}</span>` : ''}
-                    </div>
-                    <div class="wheel-condition ${conditionClass}">
-                        <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
-                            <circle cx="6" cy="6" r="6"/>
+            <tr>
+                <td>
+                    <img src="${mainImage}" alt="${escapeHtml(displayName)}" class="wheel-thumbnail" onclick="viewWheelDetails('${wheel.id}')">
+                </td>
+                <td><strong>${escapeHtml(wheel.sku)}</strong></td>
+                <td>${escapeHtml(displayName)}</td>
+                <td>${escapeHtml(wheel.size)}</td>
+                <td>${escapeHtml(wheel.boltPattern)}</td>
+                <td>
+                    <span class="status-badge wheel-condition ${conditionClass}" style="display: inline-flex; align-items: center; gap: 0.25rem;">
+                        <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor">
+                            <circle cx="4" cy="4" r="4"/>
                         </svg>
                         ${escapeHtml(wheel.condition || 'Good')}
-                    </div>
-                    <div class="wheel-actions" onclick="event.stopPropagation()">
+                    </span>
+                </td>
+                <td><strong>$${parseFloat(wheel.price || 0).toFixed(2)}</strong></td>
+                <td><span class="status-badge ${statusClass}">${escapeHtml(wheel.status || 'Available')}</span></td>
+                <td>
+                    <div class="table-actions">
+                        <button class="btn btn-sm btn-secondary" onclick="printQRLabel('${wheel.id}')" title="Print QR Label">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                <rect x="6" y="6" width="4" height="4" fill="currentColor"/>
+                                <rect x="14" y="6" width="4" height="4" fill="currentColor"/>
+                                <rect x="6" y="14" width="4" height="4" fill="currentColor"/>
+                                <path d="M14 14h1m0 0h1m-1 0v1m0-1v-1m2 0h1m0 2h-1m1 2h-1m-1 0h-1m0-2h1" stroke="currentColor" stroke-width="1"/>
+                            </svg>
+                        </button>
+                        <button class="btn btn-sm btn-secondary" onclick="viewWheelDetails('${wheel.id}')">View</button>
                         <button class="btn btn-sm btn-secondary" onclick="editWheel('${wheel.id}')">Edit</button>
                         <button class="btn btn-sm btn-danger" onclick="deleteWheel('${wheel.id}')">Delete</button>
                     </div>
-                </div>
-            </div>
+                </td>
+            </tr>
         `;
     }).join('');
 }
@@ -606,6 +622,19 @@ function changeMainImage(src, thumbnail) {
 
 function closeWheelDetailsModal() {
     document.getElementById('wheel-details-modal').classList.remove('active');
+}
+
+// QR Label Printing
+function printQRLabel(id) {
+    // Open the QR label in a new window for printing
+    const labelWindow = window.open(`/api/wheels/${id}/qr-label`, '_blank', 'width=576,height=576');
+    
+    // Auto-print when loaded
+    if (labelWindow) {
+        labelWindow.onload = function() {
+            labelWindow.print();
+        };
+    }
 }
 
 // Stats Functions

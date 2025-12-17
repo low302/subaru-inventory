@@ -181,8 +181,25 @@
                     <input type="text" id="wheels-search" placeholder="Search by SKU, model, size, or style...">
                 </div>
 
-                <div id="wheels-grid" class="wheels-grid">
-                    <!-- Wheels populated by JavaScript -->
+                <div class="table-container">
+                    <table class="inventory-table">
+                        <thead>
+                            <tr>
+                                <th>Image</th>
+                                <th>SKU</th>
+                                <th>Vehicle</th>
+                                <th>Size</th>
+                                <th>Bolt Pattern</th>
+                                <th>Condition</th>
+                                <th>Price</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="wheels-tbody">
+                            <!-- Data populated by JavaScript -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
