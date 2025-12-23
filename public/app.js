@@ -1443,3 +1443,30 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+// Sidebar Toggle
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    sidebar.classList.toggle('collapsed');
+
+    // Save state to localStorage
+    const isCollapsed = sidebar.classList.contains('collapsed');
+    localStorage.setItem('sidebarCollapsed', isCollapsed);
+}
+
+// Restore sidebar state on load
+document.addEventListener('DOMContentLoaded', () => {
+    const sidebar = document.getElementById('sidebar');
+    const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+
+    // On desktop, restore saved state
+    // On mobile, always start collapsed
+    if (window.innerWidth > 768) {
+        if (isCollapsed) {
+            sidebar.classList.add('collapsed');
+        }
+    } else {
+        // Mobile: start collapsed
+        sidebar.classList.add('collapsed');
+    }
+});

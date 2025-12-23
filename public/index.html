@@ -18,8 +18,17 @@
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
+    <!-- Hamburger Menu Button -->
+    <button class="hamburger-menu" onclick="toggleSidebar()" aria-label="Toggle menu">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <line x1="3" y1="6" x2="21" y2="6" stroke-width="2" stroke-linecap="round"/>
+            <line x1="3" y1="12" x2="21" y2="12" stroke-width="2" stroke-linecap="round"/>
+            <line x1="3" y1="18" x2="21" y2="18" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+    </button>
+
     <!-- Sidebar -->
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
                 <circle cx="16" cy="16" r="14" fill="url(#logo-gradient)"/>
@@ -32,6 +41,12 @@
                 </defs>
             </svg>
             <span class="sidebar-title">Alia Fabrication</span>
+            <button class="sidebar-close" onclick="toggleSidebar()" aria-label="Close menu">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <line x1="18" y1="6" x2="6" y2="18" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="6" y1="6" x2="18" y2="18" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </button>
         </div>
         
         <nav class="sidebar-nav">
