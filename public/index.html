@@ -40,15 +40,6 @@
                 </svg>
                 <span>Wheel Take-Offs</span>
             </button>
-            <button class="nav-item" data-view="quick-add">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                    <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/>
-                    <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/>
-                    <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/>
-                    <rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/>
-                </svg>
-                <span>Quick Add Templates</span>
-            </button>
         </nav>
     </aside>
 
@@ -163,6 +154,15 @@
                     <p class="view-subtitle">Individual inventory with unique SKUs</p>
                 </div>
                 <div style="display: flex; gap: 0.625rem;">
+                    <button class="btn btn-secondary" onclick="toggleTemplatesSection()">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <rect x="2" y="2" width="6" height="6" rx="1" stroke="currentColor" stroke-width="2"/>
+                            <rect x="12" y="2" width="6" height="6" rx="1" stroke="currentColor" stroke-width="2"/>
+                            <rect x="2" y="12" width="6" height="6" rx="1" stroke="currentColor" stroke-width="2"/>
+                            <rect x="12" y="12" width="6" height="6" rx="1" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                        Quick Add Templates
+                    </button>
                     <button class="btn btn-secondary" onclick="openCSVImportModal()">
                         <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                             <path d="M17 13V17H3V13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -227,6 +227,22 @@
                 <input type="text" id="wheels-search" placeholder="Search by SKU, model, size, or style...">
             </div>
 
+            <!-- Quick Add Templates Section -->
+            <div id="templates-section" style="display: none; margin-bottom: 1.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3 style="font-size: 1.125rem; font-weight: 600;">Quick Add Templates</h3>
+                    <button class="btn btn-sm btn-primary" onclick="openAddTemplateModal()">
+                        <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                            <path d="M10 4V16M4 10H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                        Add Template
+                    </button>
+                </div>
+                <div class="templates-grid" id="templates-grid">
+                    <!-- Templates will be populated by JavaScript -->
+                </div>
+            </div>
+
             <div class="table-container">
                 <table class="inventory-table">
                     <thead>
@@ -245,26 +261,6 @@
                         <!-- Data populated by JavaScript -->
                     </tbody>
                 </table>
-            </div>
-        </div>
-
-        <!-- Quick Add Templates View -->
-        <div id="quick-add-view" class="view">
-            <div class="view-header">
-                <div>
-                    <h1 class="view-title">Quick Add Wheel Templates</h1>
-                    <p class="view-subtitle">Save common wheel specifications for fast inventory entry</p>
-                </div>
-                <button class="btn btn-primary" onclick="openAddTemplateModal()">
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                        <path d="M10 4V16M4 10H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
-                    Add Template
-                </button>
-            </div>
-
-            <div class="templates-grid" id="templates-grid">
-                <!-- Templates will be populated by JavaScript -->
             </div>
         </div>
     </main>
@@ -433,8 +429,13 @@
                             <option value="Reserved">Reserved</option>
                         </select>
                     </div>
+                    <div class="form-group">
+                        <label for="wheel-quantity">Quantity *</label>
+                        <input type="number" id="wheel-quantity" min="1" value="1" required placeholder="1">
+                        <small style="color: var(--text-secondary); font-size: 0.75rem; display: block; margin-top: 0.25rem;">Each wheel will get a unique SKU</small>
+                    </div>
                 </div>
-                
+
                 <div class="form-group">
                     <label for="wheel-notes">Notes</label>
                     <textarea id="wheel-notes" rows="3" placeholder="Condition details, scratches, curb rash, etc..."></textarea>
@@ -559,6 +560,10 @@
                     <div class="form-group">
                         <label for="template-offset">Offset</label>
                         <input type="text" id="template-offset" placeholder="e.g., +55mm">
+                    </div>
+                    <div class="form-group">
+                        <label for="template-oem-part">OEM Part Number</label>
+                        <input type="text" id="template-oem-part" placeholder="e.g., 28111FL01A">
                     </div>
                 </div>
                 <div class="modal-actions">

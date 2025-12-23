@@ -331,6 +331,8 @@ function openAddWheelModal() {
     document.getElementById('wheel-sku').value = '';
     document.getElementById('wheel-make').value = 'Subaru';
     document.getElementById('wheel-status').value = 'Available';
+    document.getElementById('wheel-quantity').value = '1';
+    document.getElementById('wheel-quantity').parentElement.style.display = 'block';
     document.getElementById('wheel-make-other-group').style.display = 'none';
     document.getElementById('wheel-model-other-group').style.display = 'none';
     document.getElementById('image-preview').innerHTML = '';
@@ -394,6 +396,9 @@ function editWheel(id) {
     // Show delete button in edit mode
     document.getElementById('delete-wheel-btn').style.display = 'block';
 
+    // Hide quantity field in edit mode
+    document.getElementById('wheel-quantity').parentElement.style.display = 'none';
+
     document.getElementById('wheel-modal').classList.add('active');
 }
 
@@ -433,54 +438,94 @@ function removeImage(index) {
 
 async function handleWheelSubmit(e) {
     e.preventDefault();
-    
-    const formData = new FormData();
-    
+
     // Get make and model values (handle "Other" options)
     const make = document.getElementById('wheel-make').value;
     const actualMake = make === 'Other' ? document.getElementById('wheel-make-other').value : make;
-    
+
     const model = document.getElementById('wheel-model').value;
     const actualModel = model === 'Other' ? document.getElementById('wheel-model-other').value : model;
-    
-    // Generate SKU if it's empty (new wheel)
-    let sku = document.getElementById('wheel-sku').value;
-    if (!sku || !currentEditId) {
-        generateWheelSKU();
-        sku = document.getElementById('wheel-sku').value;
-    }
-    
-    // Add all fields
-    formData.append('sku', sku);
-    formData.append('year', document.getElementById('wheel-year').value);
-    formData.append('make', actualMake);
-    formData.append('model', actualModel);
-    formData.append('trim', document.getElementById('wheel-trim').value);
-    formData.append('size', document.getElementById('wheel-size').value);
-    formData.append('offset', document.getElementById('wheel-offset').value);
-    formData.append('oemPart', document.getElementById('wheel-oem-part').value);
-    formData.append('boltPattern', document.getElementById('wheel-bolt-pattern').value);
-    formData.append('condition', document.getElementById('wheel-condition').value);
-    formData.append('price', document.getElementById('wheel-price').value);
-    formData.append('status', document.getElementById('wheel-status').value);
-    formData.append('notes', document.getElementById('wheel-notes').value);
-    
-    // Add images
+
+    // Get quantity (only for new wheels, not edits)
+    const quantity = currentEditId ? 1 : parseInt(document.getElementById('wheel-quantity').value) || 1;
+
+    // Get all form data
+    const wheelData = {
+        year: document.getElementById('wheel-year').value,
+        make: actualMake,
+        model: actualModel,
+        trim: document.getElementById('wheel-trim').value,
+        size: document.getElementById('wheel-size').value,
+        offset: document.getElementById('wheel-offset').value,
+        oemPart: document.getElementById('wheel-oem-part').value,
+        boltPattern: document.getElementById('wheel-bolt-pattern').value,
+        condition: document.getElementById('wheel-condition').value,
+        price: document.getElementById('wheel-price').value,
+        status: document.getElementById('wheel-status').value,
+        notes: document.getElementById('wheel-notes').value
+    };
+
     const imageInput = document.getElementById('wheel-images');
-    Array.from(imageInput.files).forEach(file => {
-        formData.append('images', file);
-    });
-    
+    const images = Array.from(imageInput.files);
+
     try {
-        const url = currentEditId ? `/api/wheels/${currentEditId}` : '/api/wheels';
-        const method = currentEditId ? 'PUT' : 'POST';
-        
-        const response = await fetch(url, {
-            method,
-            body: formData
-        });
-        
-        if (response.ok) {
+        // If editing, just update the single wheel
+        if (currentEditId) {
+            const formData = new FormData();
+
+            let sku = document.getElementById('wheel-sku').value;
+            if (!sku) {
+                generateWheelSKU();
+                sku = document.getElementById('wheel-sku').value;
+            }
+
+            formData.append('sku', sku);
+            Object.keys(wheelData).forEach(key => {
+                formData.append(key, wheelData[key]);
+            });
+
+            images.forEach(file => {
+                formData.append('images', file);
+            });
+
+            const response = await fetch(`/api/wheels/${currentEditId}`, {
+                method: 'PUT',
+                body: formData
+            });
+
+            if (response.ok) {
+                await loadWheels();
+                closeWheelModal();
+            }
+        } else {
+            // Create multiple wheels with unique SKUs
+            for (let i = 0; i < quantity; i++) {
+                const formData = new FormData();
+
+                // Generate a unique SKU for each wheel
+                generateWheelSKU();
+                const sku = document.getElementById('wheel-sku').value;
+
+                formData.append('sku', sku);
+                Object.keys(wheelData).forEach(key => {
+                    formData.append(key, wheelData[key]);
+                });
+
+                // Add images to each wheel
+                images.forEach(file => {
+                    formData.append('images', file);
+                });
+
+                const response = await fetch('/api/wheels', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to create wheel ${i + 1} of ${quantity}`);
+                }
+            }
+
             await loadWheels();
             closeWheelModal();
         }
@@ -973,6 +1018,7 @@ function editTemplate(id) {
     document.getElementById('template-size').value = template.size;
     document.getElementById('template-bolt-pattern').value = template.boltPattern;
     document.getElementById('template-offset').value = template.offset || '';
+    document.getElementById('template-oem-part').value = template.oemPart || '';
 
     document.getElementById('template-modal').classList.add('active');
 }
@@ -991,12 +1037,18 @@ async function deleteTemplate(id) {
     }
 }
 
+function toggleTemplatesSection() {
+    const section = document.getElementById('templates-section');
+    if (section.style.display === 'none') {
+        section.style.display = 'block';
+    } else {
+        section.style.display = 'none';
+    }
+}
+
 function useTemplate(id) {
     const template = wheelTemplates.find(t => t.id === id);
     if (!template) return;
-
-    // Switch to wheels view
-    switchView('wheels');
 
     // Open wheel modal with template data pre-filled
     openAddWheelModal();
@@ -1020,6 +1072,7 @@ function useTemplate(id) {
     document.getElementById('wheel-size').value = template.size;
     document.getElementById('wheel-bolt-pattern').value = template.boltPattern;
     document.getElementById('wheel-offset').value = template.offset || '';
+    document.getElementById('wheel-oem-part').value = template.oemPart || '';
 
     // Generate SKU with template data
     generateWheelSKU();
@@ -1079,7 +1132,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 trim: document.getElementById('template-trim').value,
                 size: document.getElementById('template-size').value,
                 boltPattern: document.getElementById('template-bolt-pattern').value,
-                offset: document.getElementById('template-offset').value
+                offset: document.getElementById('template-offset').value,
+                oemPart: document.getElementById('template-oem-part').value
             };
 
             try {
