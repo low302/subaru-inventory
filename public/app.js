@@ -1325,57 +1325,106 @@ async function openQRScanner() {
     const modal = document.getElementById('qr-scanner-modal');
     const statusEl = document.getElementById('qr-status');
 
-    modal.classList.add('active');
-
-    // Initialize scanner
-    if (!html5QrCode) {
-        html5QrCode = new Html5Qrcode("qr-reader");
+    // Check if library is loaded
+    if (typeof Html5Qrcode === 'undefined') {
+        alert('QR Scanner library not loaded. Please refresh the page.');
+        return;
     }
 
+    // Check if using secure context (HTTPS or localhost)
+    if (!window.isSecureContext && window.location.hostname !== 'localhost') {
+        alert('Camera access requires HTTPS. Please use https:// or access via localhost.');
+        modal.classList.remove('active');
+        return;
+    }
+
+    modal.classList.add('active');
+
     try {
-        statusEl.textContent = 'Starting camera...';
+        statusEl.textContent = 'Requesting camera access...';
 
-        // Get camera devices
-        const devices = await Html5Qrcode.getCameras();
+        // Initialize scanner if needed
+        if (!html5QrCode) {
+            html5QrCode = new Html5Qrcode("qr-reader");
+        }
 
-        if (devices && devices.length) {
-            // Prefer back camera on mobile
-            const backCamera = devices.find(device =>
-                device.label.toLowerCase().includes('back') ||
-                device.label.toLowerCase().includes('rear') ||
-                device.label.toLowerCase().includes('environment')
-            );
+        // Get camera devices with timeout
+        statusEl.textContent = 'Detecting cameras...';
+        const devices = await Promise.race([
+            Html5Qrcode.getCameras(),
+            new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Camera detection timeout')), 10000)
+            )
+        ]);
 
-            const cameraId = backCamera ? backCamera.id : devices[0].id;
-
-            // Start scanning
-            await html5QrCode.start(
-                cameraId,
-                {
-                    fps: 10,
-                    qrbox: { width: 250, height: 250 },
-                    aspectRatio: 1.0
-                },
-                onQRCodeScanned,
-                onQRCodeScanError
-            );
-
-            isScanning = true;
-            statusEl.textContent = 'Point camera at QR code';
-        } else {
+        if (!devices || devices.length === 0) {
             statusEl.textContent = 'No camera found';
             alert('No camera found on this device.');
+            modal.classList.remove('active');
+            return;
         }
+
+        console.log('Available cameras:', devices.length);
+        devices.forEach((device, i) => {
+            console.log(`Camera ${i}: ${device.label || 'Unknown'}`);
+        });
+
+        // Prefer back camera on mobile
+        const backCamera = devices.find(device => {
+            const label = device.label ? device.label.toLowerCase() : '';
+            return label.includes('back') ||
+                   label.includes('rear') ||
+                   label.includes('environment');
+        });
+
+        const cameraId = backCamera ? backCamera.id : devices[0].id;
+        console.log('Using camera:', backCamera ? backCamera.label : devices[0].label);
+
+        statusEl.textContent = 'Starting camera...';
+
+        // Start scanning with better error handling
+        await html5QrCode.start(
+            cameraId,
+            {
+                fps: 10,
+                qrbox: { width: 250, height: 250 },
+                aspectRatio: 1.0
+            },
+            onQRCodeScanned,
+            onQRCodeScanError
+        );
+
+        isScanning = true;
+        statusEl.textContent = 'Point camera at QR code';
+        console.log('QR Scanner started successfully');
+
     } catch (error) {
         console.error('Error starting QR scanner:', error);
         statusEl.textContent = 'Error accessing camera';
 
-        // Check if it's a permission error
+        // Build error message
+        let errorMsg = 'Error starting camera';
+
         if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-            alert('Camera permission denied. Please allow camera access in your browser settings.');
+            errorMsg = 'Camera permission denied. Please allow camera access in your browser settings.';
+        } else if (error.name === 'NotFoundError') {
+            errorMsg = 'No camera found on this device.';
+        } else if (error.name === 'NotReadableError') {
+            errorMsg = 'Camera is already in use by another application.';
+        } else if (error.name === 'OverconstrainedError') {
+            errorMsg = 'Camera does not meet requirements.';
+        } else if (error.message) {
+            errorMsg = 'Error: ' + error.message;
+        } else if (typeof error === 'string') {
+            errorMsg = 'Error: ' + error;
         } else {
-            alert('Error starting camera: ' + error.message);
+            errorMsg = 'Unknown camera error. Try using HTTPS or localhost.';
         }
+
+        alert(errorMsg);
+
+        // Close modal on error
+        modal.classList.remove('active');
     }
 }
 
