@@ -40,6 +40,15 @@
                 </svg>
                 <span>Wheel Take-Offs</span>
             </button>
+            <button class="nav-item" data-view="quick-add">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/>
+                    <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/>
+                    <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/>
+                    <rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/>
+                </svg>
+                <span>Quick Add Templates</span>
+            </button>
         </nav>
     </aside>
 
@@ -111,12 +120,31 @@
                 <table class="inventory-table">
                     <thead>
                         <tr>
-                            <th>Part Number</th>
-                            <th>Name</th>
-                            <th>Category</th>
-                            <th>Quantity</th>
+                            <th onclick="sortOEMParts('partNumber')" style="cursor: pointer;" title="Click to sort">
+                                Part Number
+                                <span id="sort-part-number" class="sort-indicator"></span>
+                            </th>
+                            <th onclick="sortOEMParts('oemPartNumber')" style="cursor: pointer;" title="Click to sort">
+                                OEM Part #
+                                <span id="sort-oem-part-number" class="sort-indicator"></span>
+                            </th>
+                            <th onclick="sortOEMParts('partName')" style="cursor: pointer;" title="Click to sort">
+                                Name
+                                <span id="sort-part-name" class="sort-indicator"></span>
+                            </th>
+                            <th onclick="sortOEMParts('category')" style="cursor: pointer;" title="Click to sort">
+                                Category
+                                <span id="sort-category" class="sort-indicator"></span>
+                            </th>
+                            <th onclick="sortOEMParts('quantity')" style="cursor: pointer;" title="Click to sort">
+                                Quantity
+                                <span id="sort-quantity" class="sort-indicator"></span>
+                            </th>
                             <th>Location</th>
-                            <th>Price</th>
+                            <th onclick="sortOEMParts('price')" style="cursor: pointer;" title="Click to sort">
+                                Price
+                                <span id="sort-price" class="sort-indicator"></span>
+                            </th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -134,12 +162,21 @@
                     <h1 class="view-title">OEM Wheel Take-Offs</h1>
                     <p class="view-subtitle">Individual inventory with unique SKUs</p>
                 </div>
-                <button class="btn btn-primary" onclick="openAddWheelModal()">
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                        <path d="M10 4V16M4 10H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
-                    Add Wheel
-                </button>
+                <div style="display: flex; gap: 0.625rem;">
+                    <button class="btn btn-secondary" onclick="openCSVImportModal()">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M17 13V17H3V13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M10 3V15M10 3L6 7M10 3L14 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        Import CSV
+                    </button>
+                    <button class="btn btn-primary" onclick="openAddWheelModal()">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M10 4V16M4 10H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                        Add Wheel
+                    </button>
+                </div>
             </div>
 
             <div class="stats-grid">
@@ -211,6 +248,26 @@
                 </table>
             </div>
         </div>
+
+        <!-- Quick Add Templates View -->
+        <div id="quick-add-view" class="view">
+            <div class="view-header">
+                <div>
+                    <h1 class="view-title">Quick Add Wheel Templates</h1>
+                    <p class="view-subtitle">Save common wheel specifications for fast inventory entry</p>
+                </div>
+                <button class="btn btn-primary" onclick="openAddTemplateModal()">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M10 4V16M4 10H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    Add Template
+                </button>
+            </div>
+
+            <div class="templates-grid" id="templates-grid">
+                <!-- Templates will be populated by JavaScript -->
+            </div>
+        </div>
     </main>
 
     <!-- OEM Part Modal -->
@@ -226,6 +283,10 @@
                     <div class="form-group">
                         <label for="part-number">Part Number *</label>
                         <input type="text" id="part-number" required placeholder="e.g., 84981AL00A">
+                    </div>
+                    <div class="form-group">
+                        <label for="part-oem-number">OEM Part Number</label>
+                        <input type="text" id="part-oem-number" placeholder="e.g., 809103S000">
                     </div>
                     <div class="form-group">
                         <label for="part-name">Part Name *</label>
@@ -409,6 +470,144 @@
             </div>
             <div id="wheel-details-content">
                 <!-- Content populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Template Modal -->
+    <div id="template-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="template-modal-title">Add Wheel Template</h2>
+                <button class="modal-close" onclick="closeTemplateModal()">&times;</button>
+            </div>
+            <form id="template-form">
+                <input type="hidden" id="template-id">
+                <div class="form-group">
+                    <label for="template-name">Template Name *</label>
+                    <input type="text" id="template-name" required placeholder="e.g., 2024 Outback Premium 18-inch">
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="template-year">Year *</label>
+                        <select id="template-year" required>
+                            <option value="">Select year</option>
+                            <option value="2026">2026</option>
+                            <option value="2025">2025</option>
+                            <option value="2024">2024</option>
+                            <option value="2023">2023</option>
+                            <option value="2022">2022</option>
+                            <option value="2021">2021</option>
+                            <option value="2020">2020</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="template-make">Make *</label>
+                        <select id="template-make" required onchange="handleTemplateMakeChange()">
+                            <option value="Subaru">Subaru</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="template-make-other-group" style="display: none;">
+                        <label for="template-make-other">Other Make</label>
+                        <input type="text" id="template-make-other" placeholder="Enter make">
+                    </div>
+                    <div class="form-group">
+                        <label for="template-model">Model *</label>
+                        <select id="template-model" required onchange="handleTemplateModelChange()">
+                            <option value="">Select model</option>
+                            <option value="Outback">Outback</option>
+                            <option value="Forester">Forester</option>
+                            <option value="Ascent">Ascent</option>
+                            <option value="Crosstrek">Crosstrek</option>
+                            <option value="WRX">WRX</option>
+                            <option value="BRZ">BRZ</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="template-model-other-group" style="display: none;">
+                        <label for="template-model-other">Other Model</label>
+                        <input type="text" id="template-model-other" placeholder="Enter model">
+                    </div>
+                    <div class="form-group">
+                        <label for="template-trim">Trim</label>
+                        <select id="template-trim">
+                            <option value="">Select trim (optional)</option>
+                            <option value="Base">Base</option>
+                            <option value="Premium">Premium</option>
+                            <option value="Limited">Limited</option>
+                            <option value="Sport">Sport</option>
+                            <option value="Touring">Touring</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="template-size">Size *</label>
+                        <input type="text" id="template-size" required placeholder="e.g., 18x7.5">
+                    </div>
+                    <div class="form-group">
+                        <label for="template-bolt-pattern">Bolt Pattern *</label>
+                        <select id="template-bolt-pattern" required>
+                            <option value="">Select bolt pattern</option>
+                            <option value="5x100">5x100</option>
+                            <option value="5x114.3">5x114.3</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="template-offset">Offset</label>
+                        <input type="text" id="template-offset" placeholder="e.g., +55mm">
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeTemplateModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Template</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- CSV Import Modal -->
+    <div id="csv-import-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Import Wheels from CSV</h2>
+                <button class="modal-close" onclick="closeCSVImportModal()">&times;</button>
+            </div>
+            <div style="padding: 1.25rem;">
+                <div class="form-group">
+                    <label>CSV File *</label>
+                    <div class="file-upload">
+                        <input type="file" id="csv-file-input" accept=".csv" onchange="handleCSVFileSelect(event)">
+                        <label for="csv-file-input" class="file-upload-label">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                <path d="M21 15V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                <path d="M17 8L12 3L7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M12 3V15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            </svg>
+                            <span>Click to upload CSV file</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div style="background: rgba(0, 102, 204, 0.05); border: 1px solid rgba(0, 102, 204, 0.2); border-radius: var(--radius-lg); padding: 1rem; margin-bottom: 1rem;">
+                    <h4 style="font-size: 0.8125rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--primary);">CSV Format Requirements:</h4>
+                    <p style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.6;">
+                        Your CSV should include these columns (header row required):<br>
+                        <strong>year, make, model, trim, size, boltPattern, offset, condition, price, status, notes</strong>
+                        <br><br>
+                        <em>Note: SKUs will be auto-generated for all imported wheels. Do not include a SKU column.</em>
+                    </p>
+                </div>
+
+                <div id="csv-preview" style="display: none;">
+                    <h4 style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.75rem;">Preview (first 5 rows)</h4>
+                    <div id="csv-preview-content" style="overflow-x: auto; margin-bottom: 1rem;"></div>
+                    <p id="csv-row-count" style="font-size: 0.8125rem; color: var(--text-secondary); margin-bottom: 1rem;"></p>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeCSVImportModal()">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="csv-import-btn" onclick="processCSVImport()" disabled>Import Wheels</button>
+                </div>
             </div>
         </div>
     </div>

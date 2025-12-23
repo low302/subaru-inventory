@@ -20,9 +20,10 @@ const uploadsDir = path.join(__dirname, 'uploads');
 // Data files
 const OEM_PARTS_FILE = path.join(dataDir, 'oem-parts.json');
 const WHEELS_FILE = path.join(dataDir, 'wheels.json');
+const TEMPLATES_FILE = path.join(dataDir, 'wheel-templates.json');
 
 // Initialize data files if they don't exist
-[OEM_PARTS_FILE, WHEELS_FILE].forEach(file => {
+[OEM_PARTS_FILE, WHEELS_FILE, TEMPLATES_FILE].forEach(file => {
     if (!fs.existsSync(file)) {
         fs.writeFileSync(file, JSON.stringify([], null, 2));
     }
@@ -283,6 +284,113 @@ app.get('/api/wheels/:id/qr-label', async (req, res) => {
     } catch (error) {
         console.error('Error generating QR label:', error);
         res.status(500).json({ error: 'Failed to generate QR label' });
+    }
+});
+
+// Helper function to generate SKU
+function generateSKU(wheelData) {
+    const year = wheelData.year || '';
+    const make = (wheelData.make || '').substring(0, 3).toUpperCase();
+    const model = (wheelData.model || '').substring(0, 3).toUpperCase();
+    const size = (wheelData.size || '').replace(/[^0-9x.]/gi, '');
+    const bolt = (wheelData.boltPattern || '').replace(/[^0-9x.]/gi, '');
+    const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+
+    return `SPP-${year}${make}${model}-${size}-${bolt}-${random}`;
+}
+
+// Wheel Templates Routes
+app.get('/api/wheel-templates', (req, res) => {
+    const templates = readData(TEMPLATES_FILE);
+    res.json(templates);
+});
+
+app.post('/api/wheel-templates', (req, res) => {
+    const templates = readData(TEMPLATES_FILE);
+    const newTemplate = {
+        id: uuidv4(),
+        ...req.body,
+        createdAt: new Date().toISOString()
+    };
+    templates.push(newTemplate);
+    writeData(TEMPLATES_FILE, templates);
+    res.json(newTemplate);
+});
+
+app.put('/api/wheel-templates/:id', (req, res) => {
+    const templates = readData(TEMPLATES_FILE);
+    const index = templates.findIndex(t => t.id === req.params.id);
+
+    if (index === -1) {
+        return res.status(404).json({ error: 'Template not found' });
+    }
+
+    templates[index] = {
+        ...templates[index],
+        ...req.body,
+        updatedAt: new Date().toISOString()
+    };
+
+    writeData(TEMPLATES_FILE, templates);
+    res.json(templates[index]);
+});
+
+app.delete('/api/wheel-templates/:id', (req, res) => {
+    let templates = readData(TEMPLATES_FILE);
+    const template = templates.find(t => t.id === req.params.id);
+
+    if (!template) {
+        return res.status(404).json({ error: 'Template not found' });
+    }
+
+    templates = templates.filter(t => t.id !== req.params.id);
+    writeData(TEMPLATES_FILE, templates);
+    res.json({ message: 'Template deleted successfully' });
+});
+
+// CSV Import Route
+app.post('/api/wheels/import-csv', (req, res) => {
+    try {
+        const { wheels: csvWheels } = req.body;
+
+        if (!csvWheels || !Array.isArray(csvWheels)) {
+            return res.status(400).json({ error: 'Invalid data format' });
+        }
+
+        const wheels = readData(WHEELS_FILE);
+        let imported = 0;
+
+        csvWheels.forEach(csvWheel => {
+            // Generate SKU for each wheel
+            const sku = generateSKU(csvWheel);
+
+            const newWheel = {
+                id: uuidv4(),
+                sku: sku,
+                year: csvWheel.year || '',
+                make: csvWheel.make || '',
+                model: csvWheel.model || '',
+                trim: csvWheel.trim || '',
+                size: csvWheel.size || '',
+                boltPattern: csvWheel.boltPattern || '',
+                offset: csvWheel.offset || '',
+                condition: csvWheel.condition || 'Good',
+                price: csvWheel.price || '0',
+                status: csvWheel.status || 'Available',
+                notes: csvWheel.notes || '',
+                images: [],
+                createdAt: new Date().toISOString()
+            };
+
+            wheels.push(newWheel);
+            imported++;
+        });
+
+        writeData(WHEELS_FILE, wheels);
+        res.json({ message: 'Import successful', imported });
+    } catch (error) {
+        console.error('CSV import error:', error);
+        res.status(500).json({ error: 'Failed to import CSV' });
     }
 });
 

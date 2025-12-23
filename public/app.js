@@ -2,8 +2,12 @@
 let currentView = 'oem-parts';
 let oemParts = [];
 let wheels = [];
+let wheelTemplates = [];
 let currentEditId = null;
 let selectedImages = [];
+let oemSortField = null;
+let oemSortDirection = 'asc';
+let csvData = null;
 
 // Initialize App
 document.addEventListener('DOMContentLoaded', () => {
@@ -14,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
 async function initializeApp() {
     await loadOEMParts();
     await loadWheels();
+    await loadWheelTemplates();
     updateStats();
 }
 
@@ -83,7 +88,7 @@ function renderOEMParts(filteredParts = null) {
     if (parts.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="7">
+                <td colspan="8">
                     <div class="empty-state">
                         <svg viewBox="0 0 24 24" fill="none">
                             <path d="M20 7H4C2.89543 7 2 7.89543 2 9V19C2 20.1046 2.89543 21 4 21H20C21.1046 21 22 20.1046 22 19V9C22 7.89543 21.1046 7 20 7Z" stroke="currentColor" stroke-width="2"/>
@@ -97,12 +102,12 @@ function renderOEMParts(filteredParts = null) {
         `;
         return;
     }
-    
+
     tbody.innerHTML = parts.map(part => {
         const quantity = parseInt(part.quantity) || 0;
         let statusClass = 'status-in-stock';
         let statusText = 'In Stock';
-        
+
         if (quantity === 0) {
             statusClass = 'status-out-of-stock';
             statusText = 'Out of Stock';
@@ -110,10 +115,11 @@ function renderOEMParts(filteredParts = null) {
             statusClass = 'status-low-stock';
             statusText = 'Low Stock';
         }
-        
+
         return `
             <tr>
                 <td><strong>${escapeHtml(part.partNumber)}</strong></td>
+                <td>${escapeHtml(part.oemPartNumber || '-')}</td>
                 <td>${escapeHtml(part.partName)}</td>
                 <td>${escapeHtml(part.category || '-')}</td>
                 <td><span class="status-badge ${statusClass}">${quantity} ${statusText}</span></td>
@@ -153,26 +159,28 @@ function openAddPartModal() {
 function editPart(id) {
     const part = oemParts.find(p => p.id === id);
     if (!part) return;
-    
+
     currentEditId = id;
     document.getElementById('part-modal-title').textContent = 'Edit OEM Part';
     document.getElementById('part-id').value = id;
     document.getElementById('part-number').value = part.partNumber;
+    document.getElementById('part-oem-number').value = part.oemPartNumber || '';
     document.getElementById('part-name').value = part.partName;
     document.getElementById('part-category').value = part.category || '';
     document.getElementById('part-quantity').value = part.quantity;
     document.getElementById('part-location').value = part.location || '';
     document.getElementById('part-price').value = part.price || '';
     document.getElementById('part-notes').value = part.notes || '';
-    
+
     document.getElementById('part-modal').classList.add('active');
 }
 
 async function handlePartSubmit(e) {
     e.preventDefault();
-    
+
     const data = {
         partNumber: document.getElementById('part-number').value,
+        oemPartNumber: document.getElementById('part-oem-number').value,
         partName: document.getElementById('part-name').value,
         category: document.getElementById('part-category').value,
         quantity: document.getElementById('part-quantity').value,
@@ -756,3 +764,398 @@ document.addEventListener('keydown', (e) => {
         closeAllModals();
     }
 });
+
+// OEM Parts Sorting
+function sortOEMParts(field) {
+    // Toggle sort direction if clicking the same field
+    if (oemSortField === field) {
+        oemSortDirection = oemSortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+        oemSortField = field;
+        oemSortDirection = 'asc';
+    }
+
+    // Sort the parts
+    oemParts.sort((a, b) => {
+        let aVal = a[field] || '';
+        let bVal = b[field] || '';
+
+        // Handle numeric fields
+        if (field === 'quantity' || field === 'price') {
+            aVal = parseFloat(aVal) || 0;
+            bVal = parseFloat(bVal) || 0;
+        } else {
+            // String comparison (case insensitive)
+            aVal = aVal.toString().toLowerCase();
+            bVal = bVal.toString().toLowerCase();
+        }
+
+        if (aVal < bVal) return oemSortDirection === 'asc' ? -1 : 1;
+        if (aVal > bVal) return oemSortDirection === 'asc' ? 1 : -1;
+        return 0;
+    });
+
+    // Update sort indicators
+    document.querySelectorAll('.sort-indicator').forEach(indicator => {
+        indicator.className = 'sort-indicator';
+    });
+
+    const indicatorId = `sort-${field.replace(/([A-Z])/g, '-$1').toLowerCase()}`;
+    const indicator = document.getElementById(indicatorId);
+    if (indicator) {
+        indicator.className = `sort-indicator ${oemSortDirection}`;
+    }
+
+    // Re-render
+    renderOEMParts();
+}
+
+// Wheel Templates Functions
+async function loadWheelTemplates() {
+    try {
+        const response = await fetch('/api/wheel-templates');
+        wheelTemplates = await response.json();
+        renderWheelTemplates();
+    } catch (error) {
+        console.error('Error loading wheel templates:', error);
+    }
+}
+
+function renderWheelTemplates() {
+    const grid = document.getElementById('templates-grid');
+
+    if (wheelTemplates.length === 0) {
+        grid.innerHTML = `
+            <div class="empty-state" style="grid-column: 1 / -1;">
+                <svg viewBox="0 0 24 24" fill="none">
+                    <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/>
+                    <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/>
+                    <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/>
+                    <rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/>
+                </svg>
+                <h3>No templates found</h3>
+                <p>Create your first quick add template</p>
+            </div>
+        `;
+        return;
+    }
+
+    grid.innerHTML = wheelTemplates.map(template => `
+        <div class="template-card">
+            <div class="template-card-header">
+                <div>
+                    <div class="template-card-title">${escapeHtml(template.name)}</div>
+                    <div class="template-card-subtitle">${escapeHtml(template.year)} ${escapeHtml(template.make)} ${escapeHtml(template.model)}</div>
+                </div>
+            </div>
+            <div class="template-card-specs">
+                ${template.trim ? `
+                    <div class="template-card-spec">
+                        <span class="template-card-spec-label">Trim</span>
+                        <span class="template-card-spec-value">${escapeHtml(template.trim)}</span>
+                    </div>
+                ` : ''}
+                <div class="template-card-spec">
+                    <span class="template-card-spec-label">Size</span>
+                    <span class="template-card-spec-value">${escapeHtml(template.size)}</span>
+                </div>
+                <div class="template-card-spec">
+                    <span class="template-card-spec-label">Bolt Pattern</span>
+                    <span class="template-card-spec-value">${escapeHtml(template.boltPattern)}</span>
+                </div>
+                ${template.offset ? `
+                    <div class="template-card-spec">
+                        <span class="template-card-spec-label">Offset</span>
+                        <span class="template-card-spec-value">${escapeHtml(template.offset)}</span>
+                    </div>
+                ` : ''}
+            </div>
+            <div class="template-card-actions">
+                <button class="btn btn-sm btn-primary" onclick="useTemplate('${template.id}')" style="flex: 1;">Use Template</button>
+                <button class="btn btn-sm btn-secondary" onclick="editTemplate('${template.id}')">Edit</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteTemplate('${template.id}')">Delete</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function openAddTemplateModal() {
+    currentEditId = null;
+    document.getElementById('template-modal-title').textContent = 'Add Wheel Template';
+    document.getElementById('template-form').reset();
+    document.getElementById('template-id').value = '';
+    document.getElementById('template-make').value = 'Subaru';
+    document.getElementById('template-make-other-group').style.display = 'none';
+    document.getElementById('template-model-other-group').style.display = 'none';
+    document.getElementById('template-modal').classList.add('active');
+}
+
+function editTemplate(id) {
+    const template = wheelTemplates.find(t => t.id === id);
+    if (!template) return;
+
+    currentEditId = id;
+    document.getElementById('template-modal-title').textContent = 'Edit Wheel Template';
+    document.getElementById('template-id').value = id;
+    document.getElementById('template-name').value = template.name;
+    document.getElementById('template-year').value = template.year;
+    document.getElementById('template-make').value = template.make === 'Subaru' ? 'Subaru' : 'Other';
+
+    if (template.make !== 'Subaru') {
+        document.getElementById('template-make-other-group').style.display = 'block';
+        document.getElementById('template-make-other').value = template.make;
+    }
+
+    document.getElementById('template-model').value = template.model;
+    const modelOptions = ['Outback', 'Forester', 'Ascent', 'Crosstrek', 'WRX', 'BRZ'];
+    if (!modelOptions.includes(template.model)) {
+        document.getElementById('template-model').value = 'Other';
+        document.getElementById('template-model-other-group').style.display = 'block';
+        document.getElementById('template-model-other').value = template.model;
+    }
+
+    document.getElementById('template-trim').value = template.trim || '';
+    document.getElementById('template-size').value = template.size;
+    document.getElementById('template-bolt-pattern').value = template.boltPattern;
+    document.getElementById('template-offset').value = template.offset || '';
+
+    document.getElementById('template-modal').classList.add('active');
+}
+
+async function deleteTemplate(id) {
+    if (!confirm('Are you sure you want to delete this template?')) return;
+
+    try {
+        const response = await fetch(`/api/wheel-templates/${id}`, { method: 'DELETE' });
+        if (response.ok) {
+            await loadWheelTemplates();
+        }
+    } catch (error) {
+        console.error('Error deleting template:', error);
+        alert('Error deleting template. Please try again.');
+    }
+}
+
+function useTemplate(id) {
+    const template = wheelTemplates.find(t => t.id === id);
+    if (!template) return;
+
+    // Switch to wheels view
+    switchView('wheels');
+
+    // Open wheel modal with template data pre-filled
+    openAddWheelModal();
+    document.getElementById('wheel-year').value = template.year;
+    document.getElementById('wheel-make').value = template.make === 'Subaru' ? 'Subaru' : 'Other';
+
+    if (template.make !== 'Subaru') {
+        document.getElementById('wheel-make-other-group').style.display = 'block';
+        document.getElementById('wheel-make-other').value = template.make;
+    }
+
+    document.getElementById('wheel-model').value = template.model;
+    const modelOptions = ['Outback', 'Forester', 'Ascent', 'Crosstrek', 'WRX', 'BRZ'];
+    if (!modelOptions.includes(template.model)) {
+        document.getElementById('wheel-model').value = 'Other';
+        document.getElementById('wheel-model-other-group').style.display = 'block';
+        document.getElementById('wheel-model-other').value = template.model;
+    }
+
+    document.getElementById('wheel-trim').value = template.trim || '';
+    document.getElementById('wheel-size').value = template.size;
+    document.getElementById('wheel-bolt-pattern').value = template.boltPattern;
+    document.getElementById('wheel-offset').value = template.offset || '';
+
+    // Generate SKU with template data
+    generateWheelSKU();
+}
+
+function closeTemplateModal() {
+    document.getElementById('template-modal').classList.remove('active');
+    currentEditId = null;
+}
+
+function handleTemplateMakeChange() {
+    const make = document.getElementById('template-make').value;
+    const otherGroup = document.getElementById('template-make-other-group');
+
+    if (make === 'Other') {
+        otherGroup.style.display = 'block';
+        document.getElementById('template-make-other').required = true;
+    } else {
+        otherGroup.style.display = 'none';
+        document.getElementById('template-make-other').required = false;
+        document.getElementById('template-make-other').value = '';
+    }
+}
+
+function handleTemplateModelChange() {
+    const model = document.getElementById('template-model').value;
+    const otherGroup = document.getElementById('template-model-other-group');
+
+    if (model === 'Other') {
+        otherGroup.style.display = 'block';
+        document.getElementById('template-model-other').required = true;
+    } else {
+        otherGroup.style.display = 'none';
+        document.getElementById('template-model-other').required = false;
+        document.getElementById('template-model-other').value = '';
+    }
+}
+
+// Setup template form submission
+document.addEventListener('DOMContentLoaded', () => {
+    const templateForm = document.getElementById('template-form');
+    if (templateForm) {
+        templateForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const make = document.getElementById('template-make').value;
+            const actualMake = make === 'Other' ? document.getElementById('template-make-other').value : make;
+
+            const model = document.getElementById('template-model').value;
+            const actualModel = model === 'Other' ? document.getElementById('template-model-other').value : model;
+
+            const data = {
+                name: document.getElementById('template-name').value,
+                year: document.getElementById('template-year').value,
+                make: actualMake,
+                model: actualModel,
+                trim: document.getElementById('template-trim').value,
+                size: document.getElementById('template-size').value,
+                boltPattern: document.getElementById('template-bolt-pattern').value,
+                offset: document.getElementById('template-offset').value
+            };
+
+            try {
+                const url = currentEditId ? `/api/wheel-templates/${currentEditId}` : '/api/wheel-templates';
+                const method = currentEditId ? 'PUT' : 'POST';
+
+                const response = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    await loadWheelTemplates();
+                    closeTemplateModal();
+                }
+            } catch (error) {
+                console.error('Error saving template:', error);
+                alert('Error saving template. Please try again.');
+            }
+        });
+    }
+});
+
+// CSV Import Functions
+function openCSVImportModal() {
+    csvData = null;
+    document.getElementById('csv-file-input').value = '';
+    document.getElementById('csv-preview').style.display = 'none';
+    document.getElementById('csv-import-btn').disabled = true;
+    document.getElementById('csv-import-modal').classList.add('active');
+}
+
+function closeCSVImportModal() {
+    document.getElementById('csv-import-modal').classList.remove('active');
+    csvData = null;
+}
+
+function handleCSVFileSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const text = e.target.result;
+        parseCSV(text);
+    };
+    reader.readAsText(file);
+}
+
+function parseCSV(text) {
+    const lines = text.trim().split('\n');
+    if (lines.length < 2) {
+        alert('CSV file is empty or invalid');
+        return;
+    }
+
+    const headers = lines[0].split(',').map(h => h.trim());
+    const rows = [];
+
+    for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(v => v.trim());
+        const row = {};
+        headers.forEach((header, index) => {
+            row[header] = values[index] || '';
+        });
+        rows.push(row);
+    }
+
+    csvData = rows;
+    displayCSVPreview(headers, rows);
+}
+
+function displayCSVPreview(headers, rows) {
+    const preview = document.getElementById('csv-preview-content');
+    const previewRows = rows.slice(0, 5);
+
+    let tableHTML = '<table class="inventory-table" style="min-width: 100%;"><thead><tr>';
+    headers.forEach(header => {
+        tableHTML += `<th>${escapeHtml(header)}</th>`;
+    });
+    tableHTML += '</tr></thead><tbody>';
+
+    previewRows.forEach(row => {
+        tableHTML += '<tr>';
+        headers.forEach(header => {
+            tableHTML += `<td>${escapeHtml(row[header] || '-')}</td>`;
+        });
+        tableHTML += '</tr>';
+    });
+
+    tableHTML += '</tbody></table>';
+    preview.innerHTML = tableHTML;
+
+    document.getElementById('csv-row-count').textContent = `Total rows to import: ${rows.length}`;
+    document.getElementById('csv-preview').style.display = 'block';
+    document.getElementById('csv-import-btn').disabled = false;
+}
+
+async function processCSVImport() {
+    if (!csvData || csvData.length === 0) {
+        alert('No data to import');
+        return;
+    }
+
+    const importBtn = document.getElementById('csv-import-btn');
+    importBtn.disabled = true;
+    importBtn.textContent = 'Importing...';
+
+    try {
+        const response = await fetch('/api/wheels/import-csv', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ wheels: csvData })
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            alert(`Successfully imported ${result.imported} wheels!`);
+            await loadWheels();
+            closeCSVImportModal();
+            switchView('wheels');
+        } else {
+            const error = await response.json();
+            alert(`Error importing wheels: ${error.error || 'Unknown error'}`);
+        }
+    } catch (error) {
+        console.error('Error importing CSV:', error);
+        alert('Error importing wheels. Please try again.');
+    } finally {
+        importBtn.disabled = false;
+        importBtn.textContent = 'Import Wheels';
+    }
+}

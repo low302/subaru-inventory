@@ -377,6 +377,28 @@ body {
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--text-secondary);
+    user-select: none;
+}
+
+.sort-indicator {
+    display: inline-block;
+    margin-left: 0.25rem;
+    font-size: 0.625rem;
+    opacity: 0.5;
+}
+
+.sort-indicator::after {
+    content: '⬍';
+}
+
+.sort-indicator.asc::after {
+    content: '▲';
+    opacity: 1;
+}
+
+.sort-indicator.desc::after {
+    content: '▼';
+    opacity: 1;
 }
 
 .inventory-table td {
@@ -839,4 +861,73 @@ body {
     font-weight: 700;
     color: var(--text-primary);
     margin-bottom: 0.375rem;
+}
+
+/* Templates Grid */
+.templates-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+}
+
+.template-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    padding: 1rem;
+    transition: var(--transition);
+    box-shadow: var(--shadow-sm);
+}
+
+.template-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+}
+
+.template-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.75rem;
+}
+
+.template-card-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+}
+
+.template-card-subtitle {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.template-card-specs {
+    display: grid;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: var(--radius);
+}
+
+.template-card-spec {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+}
+
+.template-card-spec-label {
+    color: var(--text-secondary);
+}
+
+.template-card-spec-value {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.template-card-actions {
+    display: flex;
+    gap: 0.5rem;
 }
