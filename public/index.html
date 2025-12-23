@@ -153,16 +153,16 @@
                     <h1 class="view-title">OEM Wheel Take-Offs</h1>
                     <p class="view-subtitle">Individual inventory with unique SKUs</p>
                 </div>
-                <div style="display: flex; gap: 0.625rem;">
-                    <button class="btn btn-secondary" onclick="toggleTemplatesSection()">
-                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                            <rect x="2" y="2" width="6" height="6" rx="1" stroke="currentColor" stroke-width="2"/>
-                            <rect x="12" y="2" width="6" height="6" rx="1" stroke="currentColor" stroke-width="2"/>
-                            <rect x="2" y="12" width="6" height="6" rx="1" stroke="currentColor" stroke-width="2"/>
-                            <rect x="12" y="12" width="6" height="6" rx="1" stroke="currentColor" stroke-width="2"/>
+                <div style="display: flex; gap: 0.625rem; align-items: center;">
+                    <div style="position: relative;">
+                        <select id="quick-add-selector" class="btn btn-secondary" style="padding-right: 2rem; appearance: none; cursor: pointer;" onchange="handleQuickAddSelect(this)">
+                            <option value="">Quick Add</option>
+                            <option value="manage">+ Manage Templates</option>
+                        </select>
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); pointer-events: none;">
+                            <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
-                        Quick Add Templates
-                    </button>
+                    </div>
                     <button class="btn btn-secondary" onclick="openCSVImportModal()">
                         <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                             <path d="M17 13V17H3V13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -225,22 +225,6 @@
                     <path d="M13 13L17 17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                 </svg>
                 <input type="text" id="wheels-search" placeholder="Search by SKU, model, size, or style...">
-            </div>
-
-            <!-- Quick Add Templates Section -->
-            <div id="templates-section" style="display: none; margin-bottom: 1.5rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <h3 style="font-size: 1.125rem; font-weight: 600;">Quick Add Templates</h3>
-                    <button class="btn btn-sm btn-primary" onclick="openAddTemplateModal()">
-                        <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
-                            <path d="M10 4V16M4 10H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                        </svg>
-                        Add Template
-                    </button>
-                </div>
-                <div class="templates-grid" id="templates-grid">
-                    <!-- Templates will be populated by JavaScript -->
-                </div>
             </div>
 
             <div class="table-container">

@@ -922,61 +922,97 @@ async function loadWheelTemplates() {
 }
 
 function renderWheelTemplates() {
-    const grid = document.getElementById('templates-grid');
+    const selector = document.getElementById('quick-add-selector');
+    if (!selector) return;
 
-    if (wheelTemplates.length === 0) {
-        grid.innerHTML = `
-            <div class="empty-state" style="grid-column: 1 / -1;">
-                <svg viewBox="0 0 24 24" fill="none">
-                    <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/>
-                    <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/>
-                    <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/>
-                    <rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/>
-                </svg>
-                <h3>No templates found</h3>
-                <p>Create your first quick add template</p>
-            </div>
-        `;
-        return;
+    // Clear existing options except the first two (Quick Add and Manage Templates)
+    while (selector.options.length > 2) {
+        selector.remove(2);
     }
 
-    grid.innerHTML = wheelTemplates.map(template => `
-        <div class="template-card">
-            <div class="template-card-header">
-                <div>
-                    <div class="template-card-title">${escapeHtml(template.name)}</div>
-                    <div class="template-card-subtitle">${escapeHtml(template.year)} ${escapeHtml(template.make)} ${escapeHtml(template.model)}</div>
-                </div>
+    // Add separator if there are templates
+    if (wheelTemplates.length > 0) {
+        const separator = document.createElement('option');
+        separator.disabled = true;
+        separator.textContent = '──────────';
+        selector.add(separator);
+    }
+
+    // Add template options
+    wheelTemplates.forEach(template => {
+        const option = document.createElement('option');
+        option.value = template.id;
+        option.textContent = `${template.name} (${template.year} ${template.make} ${template.model})`;
+        selector.add(option);
+    });
+}
+
+function handleQuickAddSelect(select) {
+    const value = select.value;
+
+    if (value === 'manage') {
+        // Open template management modal
+        openTemplateManagerModal();
+    } else if (value) {
+        // Use selected template
+        useTemplate(value);
+    }
+
+    // Reset selector to default
+    select.value = '';
+}
+
+function openTemplateManagerModal() {
+    // Create a simple modal to manage templates
+    const modal = document.createElement('div');
+    modal.className = 'modal active';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Manage Templates</h2>
+                <button class="modal-close" onclick="closeTemplateManager()">&times;</button>
             </div>
-            <div class="template-card-specs">
-                ${template.trim ? `
-                    <div class="template-card-spec">
-                        <span class="template-card-spec-label">Trim</span>
-                        <span class="template-card-spec-value">${escapeHtml(template.trim)}</span>
-                    </div>
-                ` : ''}
-                <div class="template-card-spec">
-                    <span class="template-card-spec-label">Size</span>
-                    <span class="template-card-spec-value">${escapeHtml(template.size)}</span>
+            <div style="padding: 1.25rem;">
+                <button class="btn btn-primary" onclick="closeTemplateManager(); openAddTemplateModal()" style="margin-bottom: 1rem; width: 100%;">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style="margin-right: 0.5rem;">
+                        <path d="M10 4V16M4 10H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    Add New Template
+                </button>
+                <div id="template-manager-list" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    ${wheelTemplates.length === 0 ? '<p style="text-align: center; color: var(--text-secondary);">No templates yet. Create one to get started!</p>' : ''}
                 </div>
-                <div class="template-card-spec">
-                    <span class="template-card-spec-label">Bolt Pattern</span>
-                    <span class="template-card-spec-value">${escapeHtml(template.boltPattern)}</span>
-                </div>
-                ${template.offset ? `
-                    <div class="template-card-spec">
-                        <span class="template-card-spec-label">Offset</span>
-                        <span class="template-card-spec-value">${escapeHtml(template.offset)}</span>
-                    </div>
-                ` : ''}
-            </div>
-            <div class="template-card-actions">
-                <button class="btn btn-sm btn-primary" onclick="useTemplate('${template.id}')" style="flex: 1;">Use Template</button>
-                <button class="btn btn-sm btn-secondary" onclick="editTemplate('${template.id}')">Edit</button>
-                <button class="btn btn-sm btn-danger" onclick="deleteTemplate('${template.id}')">Delete</button>
             </div>
         </div>
-    `).join('');
+    `;
+
+    document.body.appendChild(modal);
+
+    // Render template list
+    if (wheelTemplates.length > 0) {
+        const list = modal.querySelector('#template-manager-list');
+        list.innerHTML = wheelTemplates.map(template => `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: var(--gray-50); border-radius: var(--radius-md);">
+                <div>
+                    <div style="font-weight: 600;">${escapeHtml(template.name)}</div>
+                    <div style="font-size: 0.875rem; color: var(--text-secondary);">${escapeHtml(template.year)} ${escapeHtml(template.make)} ${escapeHtml(template.model)} • ${escapeHtml(template.size)} • ${escapeHtml(template.boltPattern)}</div>
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button class="btn btn-sm btn-secondary" onclick="closeTemplateManager(); editTemplate('${template.id}')">Edit</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteTemplate('${template.id}')">Delete</button>
+                </div>
+            </div>
+        `).join('');
+    }
+}
+
+function closeTemplateManager() {
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => {
+        if (modal.querySelector('#template-manager-list')) {
+            modal.remove();
+        }
+    });
 }
 
 function openAddTemplateModal() {
@@ -1034,15 +1070,6 @@ async function deleteTemplate(id) {
     } catch (error) {
         console.error('Error deleting template:', error);
         alert('Error deleting template. Please try again.');
-    }
-}
-
-function toggleTemplatesSection() {
-    const section = document.getElementById('templates-section');
-    if (section.style.display === 'none') {
-        section.style.display = 'block';
-    } else {
-        section.style.display = 'none';
     }
 }
 
