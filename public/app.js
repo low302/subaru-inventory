@@ -291,9 +291,6 @@ function renderWheels(filteredWheels = null) {
         
         return `
             <tr>
-                <td>
-                    <img src="${mainImage}" alt="${escapeHtml(displayName)}" class="wheel-thumbnail" onclick="viewWheelDetails('${wheel.id}')">
-                </td>
                 <td><strong>${escapeHtml(wheel.sku)}</strong></td>
                 <td>${escapeHtml(displayName)}</td>
                 <td>${escapeHtml(wheel.size)}</td>
@@ -313,7 +310,6 @@ function renderWheels(filteredWheels = null) {
                         </button>
                         <button class="btn btn-sm btn-secondary" onclick="viewWheelDetails('${wheel.id}')">View</button>
                         <button class="btn btn-sm btn-secondary" onclick="editWheel('${wheel.id}')">Edit</button>
-                        <button class="btn btn-sm btn-danger" onclick="deleteWheel('${wheel.id}')">Delete</button>
                     </div>
                 </td>
             </tr>
