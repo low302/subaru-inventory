@@ -808,37 +808,164 @@ body {
 
 /* Responsive */
 @media (max-width: 768px) {
+    /* iOS Safe Area Support */
+    body {
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+    }
+
     .sidebar {
         transform: translateX(-100%);
         transition: transform 0.3s;
+        z-index: 1000;
     }
-    
+
     .main-content {
         margin-left: 0;
+        padding: 1rem;
     }
-    
+
+    /* Stack stats vertically on mobile */
     .stats-grid {
         grid-template-columns: 1fr;
+        gap: 0.75rem;
     }
-    
+
+    .stat-card {
+        padding: 1rem;
+    }
+
+    /* Single column forms on mobile */
     .form-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .wheel-details-grid {
         grid-template-columns: 1fr;
     }
-    
+
+    /* Stack header buttons vertically on mobile */
     .view-header {
         flex-direction: column;
+        align-items: stretch !important;
+        gap: 1rem;
     }
-    
+
+    .view-header > div:last-child {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .view-header button,
+    .view-header select {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* Horizontal scroll for tables */
     .table-container {
         overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
     }
-    
+
     .inventory-table {
         min-width: 800px;
+    }
+
+    /* Larger touch targets for mobile */
+    .btn {
+        min-height: 44px;
+        padding: 0.75rem 1.25rem;
+    }
+
+    .btn-sm {
+        min-height: 38px;
+        padding: 0.5rem 1rem;
+    }
+
+    /* Mobile-friendly modals */
+    .modal-content {
+        width: 95%;
+        max-width: 95%;
+        margin: 1rem auto;
+        max-height: calc(100vh - 2rem);
+        overflow-y: auto;
+    }
+
+    .modal-wide {
+        width: 95%;
+        max-width: 95%;
+    }
+
+    /* Prevent zoom on input focus for iOS */
+    input, select, textarea {
+        font-size: 16px;
+    }
+
+    /* Mobile search bar */
+    .search-bar {
+        padding: 0.75rem 1rem;
+    }
+
+    /* Better spacing for mobile */
+    .view-title {
+        font-size: 1.5rem;
+    }
+
+    .view-subtitle {
+        font-size: 0.875rem;
+    }
+
+    /* Mobile table actions */
+    .table-actions {
+        gap: 0.5rem;
+    }
+
+    .table-actions button {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.875rem;
+    }
+}
+
+/* iPhone Pro Max and larger phones */
+@media (max-width: 430px) {
+    .main-content {
+        padding: 0.75rem;
+    }
+
+    .view-header {
+        gap: 0.75rem;
+    }
+
+    .stats-grid {
+        gap: 0.5rem;
+    }
+
+    .btn {
+        font-size: 0.9375rem;
+    }
+
+    .view-title {
+        font-size: 1.25rem;
+    }
+
+    /* Compact table on very small screens */
+    .table-actions {
+        flex-direction: column;
+    }
+
+    .table-actions button {
+        width: 100%;
+    }
+}
+
+/* Landscape orientation adjustments */
+@media (max-width: 932px) and (orientation: landscape) {
+    .modal-content {
+        max-height: calc(100vh - 1rem);
+        margin: 0.5rem auto;
     }
 }
 

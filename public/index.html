@@ -2,10 +2,20 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+
+    <!-- iOS Specific Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Subaru Inventory">
+
     <title>Subaru Parts Inventory - Alia Fabrication</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔧</text></svg>">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔧</text></svg>">
     <link rel="stylesheet" href="styles.css">
+
+    <!-- QR Code Scanner Library -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
     <!-- Sidebar -->
@@ -154,6 +164,15 @@
                     <p class="view-subtitle">Individual inventory with unique SKUs</p>
                 </div>
                 <div style="display: flex; gap: 0.625rem; align-items: center;">
+                    <button class="btn btn-secondary" onclick="openQRScanner()" title="Scan QR Code">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                            <rect x="3" y="3" width="7" height="7" stroke="currentColor" stroke-width="2" rx="1"/>
+                            <rect x="14" y="3" width="7" height="7" stroke="currentColor" stroke-width="2" rx="1"/>
+                            <rect x="3" y="14" width="7" height="7" stroke="currentColor" stroke-width="2" rx="1"/>
+                            <path d="M14 14h1m0 0h1m-1 0v1m0-1v-1m2 0h1m0 2h-1m1 2h-1m-1 0h-1m0-2h1" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                        <span class="hide-mobile">Scan QR</span>
+                    </button>
                     <div style="position: relative;">
                         <select id="quick-add-selector" class="btn btn-secondary" style="padding-right: 2rem; appearance: none; cursor: pointer;" onchange="handleQuickAddSelect(this)">
                             <option value="">Quick Add</option>
@@ -168,7 +187,7 @@
                             <path d="M17 13V17H3V13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                             <path d="M10 3V15M10 3L6 7M10 3L14 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
-                        Import CSV
+                        <span class="hide-mobile">Import CSV</span>
                     </button>
                     <button class="btn btn-primary" onclick="openAddWheelModal()">
                         <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -608,6 +627,31 @@
                 <div class="modal-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeCSVImportModal()">Cancel</button>
                     <button type="button" class="btn btn-primary" id="csv-import-btn" onclick="processCSVImport()" disabled>Import Wheels</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Scanner Modal -->
+    <div id="qr-scanner-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Scan QR Code</h2>
+                <button class="modal-close" onclick="closeQRScanner()">&times;</button>
+            </div>
+            <div style="padding: 1.25rem;">
+                <div style="background: var(--gray-50); border: 2px dashed var(--border); border-radius: var(--radius-lg); padding: 1rem; margin-bottom: 1rem; text-align: center;">
+                    <div id="qr-reader" style="max-width: 100%;"></div>
+                    <p id="qr-status" style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.875rem;">Initializing camera...</p>
+                </div>
+
+                <div style="background: rgba(0, 102, 204, 0.05); border: 1px solid rgba(0, 102, 204, 0.2); border-radius: var(--radius-lg); padding: 1rem;">
+                    <h4 style="font-size: 0.8125rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--primary);">Instructions:</h4>
+                    <ul style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.6; margin: 0; padding-left: 1.25rem;">
+                        <li>Point your camera at a wheel's QR code label</li>
+                        <li>Hold steady until the code is detected</li>
+                        <li>The wheel details will open automatically</li>
+                    </ul>
                 </div>
             </div>
         </div>

@@ -1316,3 +1316,130 @@ async function processCSVImport() {
         importBtn.textContent = 'Import Wheels';
     }
 }
+
+// QR Code Scanner
+let html5QrCode = null;
+let isScanning = false;
+
+async function openQRScanner() {
+    const modal = document.getElementById('qr-scanner-modal');
+    const statusEl = document.getElementById('qr-status');
+
+    modal.classList.add('active');
+
+    // Initialize scanner
+    if (!html5QrCode) {
+        html5QrCode = new Html5Qrcode("qr-reader");
+    }
+
+    try {
+        statusEl.textContent = 'Starting camera...';
+
+        // Get camera devices
+        const devices = await Html5Qrcode.getCameras();
+
+        if (devices && devices.length) {
+            // Prefer back camera on mobile
+            const backCamera = devices.find(device =>
+                device.label.toLowerCase().includes('back') ||
+                device.label.toLowerCase().includes('rear') ||
+                device.label.toLowerCase().includes('environment')
+            );
+
+            const cameraId = backCamera ? backCamera.id : devices[0].id;
+
+            // Start scanning
+            await html5QrCode.start(
+                cameraId,
+                {
+                    fps: 10,
+                    qrbox: { width: 250, height: 250 },
+                    aspectRatio: 1.0
+                },
+                onQRCodeScanned,
+                onQRCodeScanError
+            );
+
+            isScanning = true;
+            statusEl.textContent = 'Point camera at QR code';
+        } else {
+            statusEl.textContent = 'No camera found';
+            alert('No camera found on this device.');
+        }
+    } catch (error) {
+        console.error('Error starting QR scanner:', error);
+        statusEl.textContent = 'Error accessing camera';
+
+        // Check if it's a permission error
+        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+            alert('Camera permission denied. Please allow camera access in your browser settings.');
+        } else {
+            alert('Error starting camera: ' + error.message);
+        }
+    }
+}
+
+function onQRCodeScanned(decodedText, decodedResult) {
+    if (!isScanning) return;
+
+    console.log('QR Code detected:', decodedText);
+
+    // Stop scanning immediately to prevent multiple scans
+    isScanning = false;
+
+    // Look up wheel by ID or SKU
+    const wheel = wheels.find(w => w.id === decodedText || w.sku === decodedText);
+
+    if (wheel) {
+        // Close scanner and show wheel details
+        closeQRScanner();
+        viewWheelDetails(wheel.id);
+    } else {
+        // Show error but continue scanning
+        document.getElementById('qr-status').textContent = 'Wheel not found. Scan again...';
+        setTimeout(() => {
+            if (html5QrCode && html5QrCode.getState() === Html5QrcodeScannerState.SCANNING) {
+                document.getElementById('qr-status').textContent = 'Point camera at QR code';
+                isScanning = true;
+            }
+        }, 2000);
+    }
+}
+
+function onQRCodeScanError(errorMessage) {
+    // Ignore scan errors (happens constantly while searching for QR code)
+    // console.log('QR scan error:', errorMessage);
+}
+
+async function closeQRScanner() {
+    const modal = document.getElementById('qr-scanner-modal');
+
+    isScanning = false;
+
+    try {
+        if (html5QrCode && html5QrCode.getState() === Html5QrcodeScannerState.SCANNING) {
+            await html5QrCode.stop();
+        }
+    } catch (error) {
+        console.error('Error stopping scanner:', error);
+    }
+
+    modal.classList.remove('active');
+
+    // Clear the reader div
+    const readerDiv = document.getElementById('qr-reader');
+    readerDiv.innerHTML = '';
+
+    document.getElementById('qr-status').textContent = 'Initializing camera...';
+}
+
+// Add hide-mobile class styles
+const style = document.createElement('style');
+style.textContent = `
+    @media (max-width: 768px) {
+        .hide-mobile {
+            display: none;
+        }
+    }
+`;
+document.head.appendChild(style);
