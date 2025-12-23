@@ -387,6 +387,7 @@ function editWheel(id) {
     document.getElementById('wheel-trim').value = wheel.trim || '';
     document.getElementById('wheel-size').value = wheel.size;
     document.getElementById('wheel-offset').value = wheel.offset || '';
+    document.getElementById('wheel-oem-part').value = wheel.oemPart || '';
     document.getElementById('wheel-bolt-pattern').value = wheel.boltPattern;
     document.getElementById('wheel-condition').value = wheel.condition || 'Good';
     document.getElementById('wheel-price').value = wheel.price || '';
@@ -465,6 +466,7 @@ async function handleWheelSubmit(e) {
     formData.append('trim', document.getElementById('wheel-trim').value);
     formData.append('size', document.getElementById('wheel-size').value);
     formData.append('offset', document.getElementById('wheel-offset').value);
+    formData.append('oemPart', document.getElementById('wheel-oem-part').value);
     formData.append('boltPattern', document.getElementById('wheel-bolt-pattern').value);
     formData.append('condition', document.getElementById('wheel-condition').value);
     formData.append('price', document.getElementById('wheel-price').value);
@@ -597,6 +599,12 @@ function viewWheelDetails(id) {
                         <div class="wheel-detail-row">
                             <span class="wheel-detail-label">Offset</span>
                             <span class="wheel-detail-value">${escapeHtml(wheel.offset)}</span>
+                        </div>
+                    ` : ''}
+                    ${wheel.oemPart ? `
+                        <div class="wheel-detail-row">
+                            <span class="wheel-detail-label">OEM Part Number</span>
+                            <span class="wheel-detail-value">${escapeHtml(wheel.oemPart)}</span>
                         </div>
                     ` : ''}
                     <div class="wheel-detail-row">
@@ -1050,6 +1058,27 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // CSV Import Functions
+function downloadCSVTemplate() {
+    const headers = ['year', 'make', 'model', 'trim', 'size', 'boltPattern', 'offset', 'oemPart', 'condition', 'price', 'status', 'notes'];
+    const exampleRow = ['2024', 'Subaru', 'Outback', 'Limited', '18x7.5', '5x114.3', '+55mm', '28111FL01A', 'Good', '450.00', 'Available', 'Light curb rash on one wheel'];
+
+    const csvContent = [
+        headers.join(','),
+        exampleRow.join(',')
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'wheel_inventory_template.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
 function openCSVImportModal() {
     csvData = null;
     document.getElementById('csv-file-input').value = '';

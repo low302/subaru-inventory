@@ -409,6 +409,10 @@
                         <input type="text" id="wheel-offset" placeholder="e.g., +55mm">
                     </div>
                     <div class="form-group">
+                        <label for="wheel-oem-part">OEM Part Number</label>
+                        <input type="text" id="wheel-oem-part" placeholder="e.g., 28111FL01A">
+                    </div>
+                    <div class="form-group">
                         <label for="wheel-condition">Condition *</label>
                         <select id="wheel-condition" required>
                             <option value="">Select condition</option>
@@ -592,10 +596,18 @@
                     <h4 style="font-size: 0.8125rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--primary);">CSV Format Requirements:</h4>
                     <p style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.6;">
                         Your CSV should include these columns (header row required):<br>
-                        <strong>year, make, model, trim, size, boltPattern, offset, condition, price, status, notes</strong>
+                        <strong>year, make, model, trim, size, boltPattern, offset, oemPart, condition, price, status, notes</strong>
                         <br><br>
                         <em>Note: SKUs will be auto-generated for all imported wheels. Do not include a SKU column.</em>
                     </p>
+                    <button type="button" class="btn btn-secondary" onclick="downloadCSVTemplate()" style="margin-top: 0.75rem;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="margin-right: 0.5rem;">
+                            <path d="M21 15V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M7 10L12 15L17 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M12 15V3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                        Download CSV Template
+                    </button>
                 </div>
 
                 <div id="csv-preview" style="display: none;">

@@ -374,6 +374,7 @@ app.post('/api/wheels/import-csv', (req, res) => {
                 size: csvWheel.size || '',
                 boltPattern: csvWheel.boltPattern || '',
                 offset: csvWheel.offset || '',
+                oemPart: csvWheel.oemPart || '',
                 condition: csvWheel.condition || 'Good',
                 price: csvWheel.price || '0',
                 status: csvWheel.status || 'Available',
