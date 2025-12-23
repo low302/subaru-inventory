@@ -300,16 +300,8 @@ function renderWheels(filteredWheels = null) {
                 <td><span class="status-badge ${statusClass}">${escapeHtml(wheel.status || 'Available')}</span></td>
                 <td>
                     <div class="table-actions">
-                        <button class="btn btn-sm btn-secondary" onclick="printQRLabel('${wheel.id}')" title="Print QR Label">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                                <rect x="6" y="6" width="4" height="4" fill="currentColor"/>
-                                <rect x="14" y="6" width="4" height="4" fill="currentColor"/>
-                                <rect x="6" y="14" width="4" height="4" fill="currentColor"/>
-                                <path d="M14 14h1m0 0h1m-1 0v1m0-1v-1m2 0h1m0 2h-1m1 2h-1m-1 0h-1m0-2h1" stroke="currentColor" stroke-width="1"/>
-                            </svg>
-                        </button>
                         <button class="btn btn-sm btn-secondary" onclick="viewWheelDetails('${wheel.id}')">View</button>
-                        <button class="btn btn-sm btn-secondary" onclick="editWheel('${wheel.id}')">Edit</button>
+                        <button class="btn btn-sm btn-primary" onclick="markAsSold('${wheel.id}')">Sold</button>
                     </div>
                 </td>
             </tr>
@@ -342,6 +334,7 @@ function openAddWheelModal() {
     document.getElementById('wheel-make-other-group').style.display = 'none';
     document.getElementById('wheel-model-other-group').style.display = 'none';
     document.getElementById('image-preview').innerHTML = '';
+    document.getElementById('delete-wheel-btn').style.display = 'none';
     document.getElementById('wheel-modal').classList.add('active');
 }
 
@@ -397,7 +390,10 @@ function editWheel(id) {
             <img src="${img}" alt="Wheel image">
         </div>
     `).join('');
-    
+
+    // Show delete button in edit mode
+    document.getElementById('delete-wheel-btn').style.display = 'block';
+
     document.getElementById('wheel-modal').classList.add('active');
 }
 
@@ -496,7 +492,7 @@ async function handleWheelSubmit(e) {
 
 async function deleteWheel(id) {
     if (!confirm('Are you sure you want to delete this wheel? All associated images will be removed.')) return;
-    
+
     try {
         const response = await fetch(`/api/wheels/${id}`, { method: 'DELETE' });
         if (response.ok) {
@@ -505,6 +501,53 @@ async function deleteWheel(id) {
     } catch (error) {
         console.error('Error deleting wheel:', error);
         alert('Error deleting wheel. Please try again.');
+    }
+}
+
+async function deleteWheelFromEdit() {
+    const wheelId = document.getElementById('wheel-id').value;
+    if (!wheelId) return;
+
+    if (!confirm('Are you sure you want to delete this wheel? All associated images will be removed.')) return;
+
+    try {
+        const response = await fetch(`/api/wheels/${wheelId}`, { method: 'DELETE' });
+        if (response.ok) {
+            closeWheelModal();
+            await loadWheels();
+        }
+    } catch (error) {
+        console.error('Error deleting wheel:', error);
+        alert('Error deleting wheel. Please try again.');
+    }
+}
+
+async function markAsSold(id) {
+    if (!confirm('Mark this wheel as sold?')) return;
+
+    try {
+        const wheel = wheels.find(w => w.id === id);
+        if (!wheel) return;
+
+        const formData = new FormData();
+        Object.keys(wheel).forEach(key => {
+            if (key !== 'images') {
+                formData.append(key, wheel[key]);
+            }
+        });
+        formData.set('status', 'Sold');
+
+        const response = await fetch(`/api/wheels/${id}`, {
+            method: 'PUT',
+            body: formData
+        });
+
+        if (response.ok) {
+            await loadWheels();
+        }
+    } catch (error) {
+        console.error('Error marking wheel as sold:', error);
+        alert('Error updating wheel status. Please try again.');
     }
 }
 
@@ -617,8 +660,16 @@ function viewWheelDetails(id) {
                 ` : ''}
                 
                 <div class="wheel-details-actions">
+                    <button class="btn btn-secondary" onclick="printQRLabel('${wheel.id}')" title="Print QR Label">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="margin-right: 0.5rem;">
+                            <rect x="6" y="6" width="4" height="4" fill="currentColor"/>
+                            <rect x="14" y="6" width="4" height="4" fill="currentColor"/>
+                            <rect x="6" y="14" width="4" height="4" fill="currentColor"/>
+                            <path d="M14 14h1m0 0h1m-1 0v1m0-1v-1m2 0h1m0 2h-1m1 2h-1m-1 0h-1m0-2h1" stroke="currentColor" stroke-width="1"/>
+                        </svg>
+                        Print QR Label
+                    </button>
                     <button class="btn btn-secondary" onclick="closeWheelDetailsModal(); editWheel('${wheel.id}')">Edit</button>
-                    <button class="btn btn-danger" onclick="closeWheelDetailsModal(); deleteWheel('${wheel.id}')">Delete</button>
                 </div>
             </div>
         </div>
