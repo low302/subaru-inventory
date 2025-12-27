@@ -7,8 +7,15 @@ data/
 uploads/
 
 # Logs
+logs/
 *.log
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+combined.log
+error.log
+exceptions.log
+rejections.log
 
 # Environment variables
 .env

@@ -50,14 +50,14 @@
         </div>
         
         <nav class="sidebar-nav">
-            <button class="nav-item active" data-view="oem-parts">
+            <button class="nav-item" data-view="oem-parts">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                     <path d="M20 7H4C2.89543 7 2 7.89543 2 9V19C2 20.1046 2.89543 21 4 21H20C21.1046 21 22 20.1046 22 19V9C22 7.89543 21.1046 7 20 7Z" stroke="currentColor" stroke-width="2"/>
                     <path d="M16 7V5C16 3.89543 15.1046 3 14 3H10C8.89543 3 8 3.89543 8 5V7" stroke="currentColor" stroke-width="2"/>
                 </svg>
                 <span>OEM Parts</span>
             </button>
-            <button class="nav-item" data-view="wheels">
+            <button class="nav-item active" data-view="wheels">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                     <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
                     <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/>
@@ -71,7 +71,7 @@
     <!-- Main Content -->
     <main class="main-content">
         <!-- OEM Parts View -->
-        <div id="oem-parts-view" class="view active">
+        <div id="oem-parts-view" class="view">
             <div class="view-header">
                 <div>
                     <h1 class="view-title">OEM Parts Inventory</h1>
@@ -172,7 +172,7 @@
         </div>
 
         <!-- Wheels View -->
-        <div id="wheels-view" class="view">
+        <div id="wheels-view" class="view active">
             <div class="view-header">
                 <div>
                     <h1 class="view-title">OEM Wheel Take-Offs</h1>
