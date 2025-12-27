@@ -889,6 +889,11 @@ body {
         padding-right: env(safe-area-inset-right);
     }
 
+    /* Hide elements on mobile */
+    .hide-mobile {
+        display: none !important;
+    }
+
     .sidebar {
         transform: translateX(-100%);
         transition: transform 0.3s;

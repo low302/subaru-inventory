@@ -278,19 +278,6 @@ function setupEventListeners() {
     document.querySelector('.sidebar-header')?.appendChild(logoutBtn);
 }
 
-// Debounce utility
-function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
-}
-
 // View Switching
 function switchView(view) {
     APP_STATE.currentView = view;
@@ -564,6 +551,198 @@ function filterWheels(searchTerm) {
         );
     });
     renderWheels(filtered);
+}
+
+// Utility Functions
+function escapeHtml(unsafe) {
+    if (!unsafe) return '';
+    return String(unsafe)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// Update Statistics
+function updateStats() {
+    // OEM Parts Stats
+    const oemTotal = APP_STATE.oemParts.length;
+    const oemInStock = APP_STATE.oemParts.filter(p => p.quantity > 0).length;
+    const oemLowStock = APP_STATE.oemParts.filter(p => p.quantity > 0 && p.quantity <= LOW_STOCK_THRESHOLD).length;
+
+    document.getElementById('oem-total').textContent = oemTotal;
+    document.getElementById('oem-in-stock').textContent = oemInStock;
+    document.getElementById('oem-low-stock').textContent = oemLowStock;
+
+    // Wheels Stats
+    const notSold = APP_STATE.wheels.filter(w => w.status !== 'Sold').length;
+    const sold = APP_STATE.wheels.filter(w => w.status === 'Sold').length;
+    const totalValue = APP_STATE.wheels
+        .filter(w => w.status !== 'Sold')
+        .reduce((sum, w) => sum + parseFloat(w.price || 0), 0);
+
+    document.getElementById('wheels-not-sold').textContent = notSold;
+    document.getElementById('wheels-sold').textContent = sold;
+    document.getElementById('wheels-total-value').textContent = `$${totalValue.toFixed(2)}`;
+}
+
+// Load Wheel Templates
+async function loadWheelTemplates() {
+    try {
+        const response = await fetchWithAuth('/api/wheel-templates');
+        const { data } = await response.json();
+        APP_STATE.wheelTemplates = data || [];
+        updateQuickAddDropdown();
+    } catch (error) {
+        console.error('Error loading wheel templates:', error);
+        APP_STATE.wheelTemplates = [];
+    }
+}
+
+function updateQuickAddDropdown() {
+    const selector = document.getElementById('quick-add-selector');
+    if (!selector) return;
+
+    // Clear existing options except first two
+    while (selector.options.length > 2) {
+        selector.remove(2);
+    }
+
+    // Add templates
+    APP_STATE.wheelTemplates.forEach(template => {
+        const option = document.createElement('option');
+        option.value = template.id;
+        option.textContent = template.name;
+        selector.appendChild(option);
+    });
+}
+
+// Handle Wheel Form Submit
+async function handleWheelSubmit(e) {
+    e.preventDefault();
+
+    const formData = new FormData();
+    const wheelId = document.getElementById('wheel-id').value;
+
+    // Collect form data
+    formData.append('sku', document.getElementById('wheel-sku').value || '');
+    formData.append('year', document.getElementById('wheel-year').value);
+    formData.append('make', document.getElementById('wheel-make').value === 'Other'
+        ? document.getElementById('wheel-make-other').value
+        : document.getElementById('wheel-make').value);
+    formData.append('model', document.getElementById('wheel-model').value === 'Other'
+        ? document.getElementById('wheel-model-other').value
+        : document.getElementById('wheel-model').value);
+    formData.append('trim', document.getElementById('wheel-trim').value);
+    formData.append('size', document.getElementById('wheel-size').value);
+    formData.append('boltPattern', document.getElementById('wheel-bolt-pattern').value);
+    formData.append('offset', document.getElementById('wheel-offset').value);
+    formData.append('oemPart', document.getElementById('wheel-oem-part').value);
+    formData.append('condition', document.getElementById('wheel-condition').value);
+    formData.append('price', document.getElementById('wheel-price').value);
+    formData.append('status', document.getElementById('wheel-status').value);
+    formData.append('notes', document.getElementById('wheel-notes').value);
+    formData.append('quantity', document.getElementById('wheel-quantity').value || '1');
+
+    // Add images
+    const imageInput = document.getElementById('wheel-images');
+    if (imageInput && imageInput.files) {
+        for (let i = 0; i < imageInput.files.length; i++) {
+            formData.append('images', imageInput.files[i]);
+        }
+    }
+
+    try {
+        const url = wheelId ? `/api/wheels/${wheelId}` : '/api/wheels';
+        const method = wheelId ? 'PUT' : 'POST';
+
+        const response = await fetchWithAuth(url, {
+            method: method,
+            body: formData
+        });
+
+        if (response.ok) {
+            showSuccess(wheelId ? 'Wheel updated successfully' : 'Wheel added successfully');
+            closeWheelModal();
+            await loadWheels();
+        } else {
+            const error = await response.json();
+            showError(error.error || 'Failed to save wheel');
+        }
+    } catch (error) {
+        console.error('Error saving wheel:', error);
+        showError('Failed to save wheel: ' + error.message);
+    }
+}
+
+// Handle Image Selection with validation
+function handleImageSelect(e) {
+    const files = e.target.files;
+    const preview = document.getElementById('image-preview');
+    if (!preview) return;
+
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    const maxFiles = 10;
+
+    preview.innerHTML = '';
+
+    if (files.length > maxFiles) {
+        showError(`Maximum ${maxFiles} images allowed`);
+        e.target.value = '';
+        return;
+    }
+
+    let validFiles = 0;
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+
+        // Validate file type
+        if (!allowedTypes.includes(file.type)) {
+            showError(`Invalid file type: ${file.name}. Only JPEG, PNG, and WebP images are allowed.`);
+            continue;
+        }
+
+        // Validate file size
+        if (file.size > maxSize) {
+            showError(`File too large: ${file.name}. Maximum size is 10MB.`);
+            continue;
+        }
+
+        validFiles++;
+        const reader = new FileReader();
+
+        reader.onload = (event) => {
+            const img = document.createElement('img');
+            img.src = event.target.result;
+            img.className = 'preview-image';
+            img.style.maxWidth = '150px';
+            img.style.maxHeight = '150px';
+            img.style.objectFit = 'cover';
+            img.style.margin = '5px';
+            img.style.borderRadius = '4px';
+            preview.appendChild(img);
+        };
+
+        reader.readAsDataURL(file);
+    }
+
+    if (validFiles === 0 && files.length > 0) {
+        e.target.value = '';
+    }
 }
 
 // Modal Control Functions
@@ -920,7 +1099,7 @@ function updateSortIndicators(field) {
     }
 }
 
-// CSV Import Functions
+// CSV Import Functions with proper quoted field handling
 function handleCSVFileSelect(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -936,11 +1115,13 @@ function handleCSVFileSelect(event) {
                 return;
             }
 
-            const headers = lines[0].split(',').map(h => h.trim());
+            // Use proper CSV parser for headers
+            const headers = parseCSVLine(lines[0]);
             const data = [];
 
             for (let i = 1; i < lines.length; i++) {
-                const values = lines[i].split(',').map(v => v.trim());
+                // Use proper CSV parser for each line
+                const values = parseCSVLine(lines[i]);
                 const row = {};
                 headers.forEach((header, index) => {
                     row[header] = values[index] || '';
@@ -950,10 +1131,11 @@ function handleCSVFileSelect(event) {
 
             APP_STATE.csvData = data;
             displayCSVPreview(data, headers);
-            document.getElementById('csv-import-btn').disabled = false;
+            const importBtn = document.getElementById('csv-import-btn');
+            if (importBtn) importBtn.disabled = false;
         } catch (error) {
             console.error('Error parsing CSV:', error);
-            showError('Failed to parse CSV file');
+            showError('Failed to parse CSV file: ' + error.message);
         }
     };
 
@@ -1100,3 +1282,229 @@ function onScanSuccess(decodedText) {
         showError(`No wheel found with SKU: ${decodedText}`);
     }
 }
+
+// Template CRUD Functions
+async function handleTemplateSubmit(e) {
+    e.preventDefault();
+
+    const templateId = document.getElementById('template-id')?.value;
+    const make = document.getElementById('template-make')?.value;
+    const makeOther = document.getElementById('template-make-other')?.value;
+    const model = document.getElementById('template-model')?.value;
+    const modelOther = document.getElementById('template-model-other')?.value;
+
+    const templateData = {
+        name: document.getElementById('template-name')?.value,
+        year: document.getElementById('template-year')?.value,
+        make: make === 'Other' ? makeOther : make,
+        model: model === 'Other' ? modelOther : model,
+        trim: document.getElementById('template-trim')?.value || '',
+        size: document.getElementById('template-size')?.value,
+        boltPattern: document.getElementById('template-bolt-pattern')?.value,
+        offset: document.getElementById('template-offset')?.value || '',
+        oemPart: document.getElementById('template-oem-part')?.value || ''
+    };
+
+    try {
+        const url = templateId ? `/api/wheel-templates/${templateId}` : '/api/wheel-templates';
+        const method = templateId ? 'PUT' : 'POST';
+
+        const response = await fetchWithAuth(url, {
+            method: method,
+            body: JSON.stringify(templateData)
+        });
+
+        if (response.ok) {
+            showSuccess(templateId ? 'Template updated successfully' : 'Template added successfully');
+            closeTemplateModal();
+            await loadWheelTemplates();
+        } else {
+            const error = await response.json();
+            showError(error.error || 'Failed to save template');
+        }
+    } catch (error) {
+        console.error('Error saving template:', error);
+        showError('Failed to save template: ' + error.message);
+    }
+}
+
+async function editTemplate(templateId) {
+    const template = APP_STATE.wheelTemplates.find(t => t.id === templateId);
+    if (!template) return;
+
+    const modal = document.getElementById('template-modal');
+    if (!modal) return;
+
+    document.getElementById('template-modal-title').textContent = 'Edit Template';
+    document.getElementById('template-id').value = template.id;
+    document.getElementById('template-name').value = template.name || '';
+    document.getElementById('template-year').value = template.year || '';
+
+    // Handle make
+    const makeSelect = document.getElementById('template-make');
+    const makeOtherGroup = document.getElementById('template-make-other-group');
+    if (template.make === 'Subaru') {
+        makeSelect.value = 'Subaru';
+        makeOtherGroup.style.display = 'none';
+    } else {
+        makeSelect.value = 'Other';
+        makeOtherGroup.style.display = 'block';
+        document.getElementById('template-make-other').value = template.make;
+    }
+
+    // Handle model
+    const modelSelect = document.getElementById('template-model');
+    const modelOtherGroup = document.getElementById('template-model-other-group');
+    const modelExists = Array.from(modelSelect.options).some(opt => opt.value === template.model);
+    if (modelExists) {
+        modelSelect.value = template.model;
+        modelOtherGroup.style.display = 'none';
+    } else {
+        modelSelect.value = 'Other';
+        modelOtherGroup.style.display = 'block';
+        document.getElementById('template-model-other').value = template.model;
+    }
+
+    document.getElementById('template-trim').value = template.trim || '';
+    document.getElementById('template-size').value = template.size || '';
+    document.getElementById('template-bolt-pattern').value = template.boltPattern || '';
+    document.getElementById('template-offset').value = template.offset || '';
+    document.getElementById('template-oem-part').value = template.oemPart || '';
+
+    modal.classList.add('active');
+}
+
+async function deleteTemplate(templateId) {
+    if (!confirm('Are you sure you want to delete this template?')) return;
+
+    try {
+        const response = await fetchWithAuth(`/api/wheel-templates/${templateId}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            showSuccess('Template deleted successfully');
+            await loadWheelTemplates();
+        } else {
+            const error = await response.json();
+            showError(error.error || 'Failed to delete template');
+        }
+    } catch (error) {
+        console.error('Error deleting template:', error);
+        showError('Failed to delete template: ' + error.message);
+    }
+}
+
+// Enhanced CSV Parser with proper quoted field handling
+function parseCSVLine(line) {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        const nextChar = line[i + 1];
+
+        if (char === '"') {
+            if (inQuotes && nextChar === '"') {
+                // Escaped quote
+                current += '"';
+                i++;
+            } else {
+                // Toggle quote state
+                inQuotes = !inQuotes;
+            }
+        } else if (char === ',' && !inQuotes) {
+            // End of field
+            result.push(current.trim());
+            current = '';
+        } else {
+            current += char;
+        }
+    }
+
+    // Add last field
+    result.push(current.trim());
+
+    return result;
+}
+
+// Add event listener setup for template form
+document.addEventListener('DOMContentLoaded', () => {
+    const templateForm = document.getElementById('template-form');
+    if (templateForm) {
+        templateForm.addEventListener('submit', handleTemplateSubmit);
+    }
+});
+
+// Add empty state rendering for tables
+function renderEmptyState(message, tableName) {
+    return `
+        <tr>
+            <td colspan="10" style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" style="margin-bottom: 1rem; opacity: 0.3;">
+                    <path d="M9 11L12 14L22 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M21 12V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V5C3.89543 3 5 3 5 3H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <p style="font-size: 1.125rem; font-weight: 500; margin-bottom: 0.5rem;">${message}</p>
+                <p style="font-size: 0.875rem;">Click the button above to add your first ${tableName}</p>
+            </td>
+        </tr>
+    `;
+}
+
+// Add unsaved changes warning
+let formIsDirty = false;
+
+function markFormDirty() {
+    formIsDirty = true;
+}
+
+function markFormClean() {
+    formIsDirty = false;
+}
+
+function checkUnsavedChanges() {
+    if (formIsDirty) {
+        return confirm('You have unsaved changes. Are you sure you want to close?');
+    }
+    return true;
+}
+
+// Override close functions to check for unsaved changes
+const originalCloseWheelModal = closeWheelModal;
+const originalClosePartModal = closePartModal;
+const originalCloseTemplateModal = closeTemplateModal;
+
+function closeWheelModal() {
+    if (checkUnsavedChanges()) {
+        originalCloseWheelModal();
+        markFormClean();
+    }
+}
+
+function closePartModal() {
+    if (checkUnsavedChanges()) {
+        originalClosePartModal();
+        markFormClean();
+    }
+}
+
+function closeTemplateModal() {
+    if (checkUnsavedChanges()) {
+        originalCloseTemplateModal();
+        markFormClean();
+    }
+}
+
+// Add form change listeners
+document.addEventListener('DOMContentLoaded', () => {
+    const forms = ['wheel-form', 'part-form', 'template-form'];
+    forms.forEach(formId => {
+        const form = document.getElementById(formId);
+        if (form) {
+            form.addEventListener('input', markFormDirty);
+            form.addEventListener('submit', markFormClean);
+        }
+    });
+});
