@@ -80,18 +80,36 @@ app.use(helmet({
             fontSrc: ["'self'", "https://fonts.gstatic.com"],
             scriptSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com"],
             imgSrc: ["'self'", "data:", "blob:"],
-            connectSrc: ["'self'"]
+            connectSrc: ["'self'"],
+            upgradeInsecureRequests: null
         }
     },
-    crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
-    crossOriginResourcePolicy: { policy: "same-site" },
-    crossOriginEmbedderPolicy: false
+    crossOriginOpenerPolicy: false,
+    crossOriginResourcePolicy: false,
+    crossOriginEmbedderPolicy: false,
+    strictTransportSecurity: false
 }));
 
 app.use(cors({
     origin: process.env.CORS_ORIGIN || '*',
     credentials: true
 }));
+
+// Prevent HTTPS upgrade attempts and force HTTP
+app.use((req, res, next) => {
+    // Remove any HSTS headers
+    res.removeHeader('Strict-Transport-Security');
+    // Ensure no upgrade-insecure-requests
+    res.removeHeader('Content-Security-Policy');
+    res.setHeader('Content-Security-Policy',
+        "default-src 'self'; " +
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+        "font-src 'self' https://fonts.gstatic.com; " +
+        "script-src 'self' 'unsafe-inline' https://unpkg.com; " +
+        "img-src 'self' data: blob:; " +
+        "connect-src 'self'");
+    next();
+});
 
 // Rate limiting
 const limiter = rateLimit({
