@@ -942,17 +942,38 @@ async function printQRLabel(wheelId) {
         const wheel = APP_STATE.wheels.find(w => w.id === wheelId);
         if (!wheel) return;
 
-        const labelWindow = window.open(`/api/wheels/${wheelId}/qr-label`, '_blank');
-        if (labelWindow) {
-            labelWindow.addEventListener('load', () => {
-                setTimeout(() => {
-                    labelWindow.print();
-                }, 500);
-            });
+        // Fetch the QR label HTML with authentication
+        const response = await fetchWithAuth(`/api/wheels/${wheelId}/qr-label`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch QR label');
         }
+
+        const html = await response.text();
+
+        // Create a blob URL from the HTML
+        const blob = new Blob([html], { type: 'text/html' });
+        const blobUrl = URL.createObjectURL(blob);
+
+        // Open in new window and print
+        const labelWindow = window.open(blobUrl, '_blank');
+        if (!labelWindow) {
+            showError('Popup blocked. Please allow popups for this site.');
+            URL.revokeObjectURL(blobUrl);
+            return;
+        }
+
+        labelWindow.addEventListener('load', () => {
+            setTimeout(() => {
+                labelWindow.print();
+                // Clean up blob URL after printing
+                setTimeout(() => {
+                    URL.revokeObjectURL(blobUrl);
+                }, 1000);
+            }, 500);
+        });
     } catch (error) {
         console.error('Error printing QR label:', error);
-        showError('Failed to print QR label');
+        showError('Failed to print QR label: ' + error.message);
     }
 }
 
