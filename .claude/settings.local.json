@@ -4,7 +4,9 @@
       "Bash(dir:*)",
       "Bash(npm install:*)",
       "Bash(node -c:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(tasklist:*)",
+      "Bash(findstr:*)"
     ]
   }
 }

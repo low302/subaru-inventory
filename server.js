@@ -83,8 +83,8 @@ app.use(helmet({
             connectSrc: ["'self'"]
         }
     },
-    crossOriginOpenerPolicy: false,
-    crossOriginResourcePolicy: false,
+    crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
+    crossOriginResourcePolicy: { policy: "same-site" },
     crossOriginEmbedderPolicy: false
 }));
 
