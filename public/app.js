@@ -566,4 +566,199 @@ function filterWheels(searchTerm) {
     renderWheels(filtered);
 }
 
-// [File continues - this is part 1 of the app.js rewrite]
+// Utility Functions
+function escapeHtml(unsafe) {
+    if (!unsafe) return '';
+    return String(unsafe)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// Update Statistics
+function updateStats() {
+    // OEM Parts Stats
+    const oemTotal = APP_STATE.oemParts.length;
+    const oemInStock = APP_STATE.oemParts.filter(p => p.quantity > 0).length;
+    const oemLowStock = APP_STATE.oemParts.filter(p => p.quantity > 0 && p.quantity <= LOW_STOCK_THRESHOLD).length;
+
+    document.getElementById('oem-total').textContent = oemTotal;
+    document.getElementById('oem-in-stock').textContent = oemInStock;
+    document.getElementById('oem-low-stock').textContent = oemLowStock;
+
+    // Wheels Stats
+    const notSold = APP_STATE.wheels.filter(w => w.status !== 'Sold').length;
+    const sold = APP_STATE.wheels.filter(w => w.status === 'Sold').length;
+    const totalValue = APP_STATE.wheels
+        .filter(w => w.status !== 'Sold')
+        .reduce((sum, w) => sum + parseFloat(w.price || 0), 0);
+
+    document.getElementById('wheels-not-sold').textContent = notSold;
+    document.getElementById('wheels-sold').textContent = sold;
+    document.getElementById('wheels-total-value').textContent = `$${totalValue.toFixed(2)}`;
+}
+
+// Load Wheel Templates
+async function loadWheelTemplates() {
+    try {
+        const response = await fetchWithAuth('/api/wheel-templates');
+        const { data } = await response.json();
+        APP_STATE.wheelTemplates = data || [];
+        updateQuickAddDropdown();
+    } catch (error) {
+        console.error('Error loading wheel templates:', error);
+        APP_STATE.wheelTemplates = [];
+    }
+}
+
+function updateQuickAddDropdown() {
+    const selector = document.getElementById('quick-add-selector');
+    if (!selector) return;
+
+    // Clear existing options except first two
+    while (selector.options.length > 2) {
+        selector.remove(2);
+    }
+
+    // Add templates
+    APP_STATE.wheelTemplates.forEach(template => {
+        const option = document.createElement('option');
+        option.value = template.id;
+        option.textContent = template.name;
+        selector.appendChild(option);
+    });
+}
+
+// Handle Wheel Form Submit
+async function handleWheelSubmit(e) {
+    e.preventDefault();
+
+    const formData = new FormData();
+    const wheelId = document.getElementById('wheel-id').value;
+
+    // Collect form data
+    formData.append('sku', document.getElementById('wheel-sku').value || '');
+    formData.append('year', document.getElementById('wheel-year').value);
+    formData.append('make', document.getElementById('wheel-make').value === 'Other'
+        ? document.getElementById('wheel-make-other').value
+        : document.getElementById('wheel-make').value);
+    formData.append('model', document.getElementById('wheel-model').value === 'Other'
+        ? document.getElementById('wheel-model-other').value
+        : document.getElementById('wheel-model').value);
+    formData.append('trim', document.getElementById('wheel-trim').value);
+    formData.append('size', document.getElementById('wheel-size').value);
+    formData.append('boltPattern', document.getElementById('wheel-bolt-pattern').value);
+    formData.append('offset', document.getElementById('wheel-offset').value);
+    formData.append('oemPart', document.getElementById('wheel-oem-part').value);
+    formData.append('condition', document.getElementById('wheel-condition').value);
+    formData.append('price', document.getElementById('wheel-price').value);
+    formData.append('status', document.getElementById('wheel-status').value);
+    formData.append('notes', document.getElementById('wheel-notes').value);
+    formData.append('quantity', document.getElementById('wheel-quantity').value || '1');
+
+    // Add images
+    const imageInput = document.getElementById('wheel-images');
+    if (imageInput && imageInput.files) {
+        for (let i = 0; i < imageInput.files.length; i++) {
+            formData.append('images', imageInput.files[i]);
+        }
+    }
+
+    try {
+        const url = wheelId ? `/api/wheels/${wheelId}` : '/api/wheels';
+        const method = wheelId ? 'PUT' : 'POST';
+
+        const response = await fetchWithAuth(url, {
+            method: method,
+            body: formData
+        });
+
+        if (response.ok) {
+            showSuccess(wheelId ? 'Wheel updated successfully' : 'Wheel added successfully');
+            closeWheelModal();
+            await loadWheels();
+        } else {
+            const error = await response.json();
+            showError(error.error || 'Failed to save wheel');
+        }
+    } catch (error) {
+        console.error('Error saving wheel:', error);
+        showError('Failed to save wheel: ' + error.message);
+    }
+}
+
+// Handle Part Form Submit
+async function handlePartSubmit(e) {
+    e.preventDefault();
+
+    const partId = document.getElementById('part-id').value;
+    const partData = {
+        partNumber: document.getElementById('part-number').value,
+        oemPartNumber: document.getElementById('part-oem-number').value,
+        partName: document.getElementById('part-name').value,
+        category: document.getElementById('part-category').value,
+        quantity: parseInt(document.getElementById('part-quantity').value),
+        location: document.getElementById('part-location').value,
+        price: document.getElementById('part-price').value,
+        notes: document.getElementById('part-notes').value
+    };
+
+    try {
+        const url = partId ? `/api/oem-parts/${partId}` : '/api/oem-parts';
+        const method = partId ? 'PUT' : 'POST';
+
+        const response = await fetchWithAuth(url, {
+            method: method,
+            body: JSON.stringify(partData)
+        });
+
+        if (response.ok) {
+            showSuccess(partId ? 'Part updated successfully' : 'Part added successfully');
+            closePartModal();
+            await loadOEMParts();
+        } else {
+            const error = await response.json();
+            showError(error.error || 'Failed to save part');
+        }
+    } catch (error) {
+        console.error('Error saving part:', error);
+        showError('Failed to save part: ' + error.message);
+    }
+}
+
+// Handle Image Selection
+function handleImageSelect(e) {
+    const files = e.target.files;
+    const preview = document.getElementById('image-preview');
+    if (!preview) return;
+
+    preview.innerHTML = '';
+
+    for (let i = 0; i < Math.min(files.length, 10); i++) {
+        const file = files[i];
+        const reader = new FileReader();
+
+        reader.onload = (event) => {
+            const img = document.createElement('img');
+            img.src = event.target.result;
+            img.className = 'preview-image';
+            preview.appendChild(img);
+        };
+
+        reader.readAsDataURL(file);
+    }
+}
