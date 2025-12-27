@@ -566,199 +566,537 @@ function filterWheels(searchTerm) {
     renderWheels(filtered);
 }
 
-// Utility Functions
-function escapeHtml(unsafe) {
-    if (!unsafe) return '';
-    return String(unsafe)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-}
-
-function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
-}
-
-// Update Statistics
-function updateStats() {
-    // OEM Parts Stats
-    const oemTotal = APP_STATE.oemParts.length;
-    const oemInStock = APP_STATE.oemParts.filter(p => p.quantity > 0).length;
-    const oemLowStock = APP_STATE.oemParts.filter(p => p.quantity > 0 && p.quantity <= LOW_STOCK_THRESHOLD).length;
-
-    document.getElementById('oem-total').textContent = oemTotal;
-    document.getElementById('oem-in-stock').textContent = oemInStock;
-    document.getElementById('oem-low-stock').textContent = oemLowStock;
-
-    // Wheels Stats
-    const notSold = APP_STATE.wheels.filter(w => w.status !== 'Sold').length;
-    const sold = APP_STATE.wheels.filter(w => w.status === 'Sold').length;
-    const totalValue = APP_STATE.wheels
-        .filter(w => w.status !== 'Sold')
-        .reduce((sum, w) => sum + parseFloat(w.price || 0), 0);
-
-    document.getElementById('wheels-not-sold').textContent = notSold;
-    document.getElementById('wheels-sold').textContent = sold;
-    document.getElementById('wheels-total-value').textContent = `$${totalValue.toFixed(2)}`;
-}
-
-// Load Wheel Templates
-async function loadWheelTemplates() {
-    try {
-        const response = await fetchWithAuth('/api/wheel-templates');
-        const { data } = await response.json();
-        APP_STATE.wheelTemplates = data || [];
-        updateQuickAddDropdown();
-    } catch (error) {
-        console.error('Error loading wheel templates:', error);
-        APP_STATE.wheelTemplates = [];
+// Modal Control Functions
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar) {
+        sidebar.classList.toggle('open');
     }
 }
 
-function updateQuickAddDropdown() {
-    const selector = document.getElementById('quick-add-selector');
-    if (!selector) return;
+function openAddWheelModal() {
+    document.getElementById('wheel-modal-title').textContent = 'Add Wheel';
+    document.getElementById('wheel-form').reset();
+    document.getElementById('wheel-id').value = '';
+    document.getElementById('wheel-sku').value = '';
+    document.getElementById('delete-wheel-btn').style.display = 'none';
+    document.getElementById('image-preview').innerHTML = '';
+    document.getElementById('wheel-modal').classList.add('active');
+}
 
-    // Clear existing options except first two
-    while (selector.options.length > 2) {
-        selector.remove(2);
-    }
+function closeWheelModal() {
+    document.getElementById('wheel-modal').classList.remove('active');
+    document.getElementById('wheel-form').reset();
+}
 
-    // Add templates
-    APP_STATE.wheelTemplates.forEach(template => {
-        const option = document.createElement('option');
-        option.value = template.id;
-        option.textContent = template.name;
-        selector.appendChild(option);
+function closeWheelDetailsModal() {
+    document.getElementById('wheel-details-modal').classList.remove('active');
+}
+
+function openTemplateModal() {
+    document.getElementById('template-modal-title').textContent = 'Add Wheel Template';
+    document.getElementById('template-form').reset();
+    document.getElementById('template-id').value = '';
+    document.getElementById('template-modal').classList.add('active');
+}
+
+function closeTemplateModal() {
+    document.getElementById('template-modal').classList.remove('active');
+}
+
+function openCSVImportModal() {
+    document.getElementById('csv-import-modal').classList.add('active');
+    document.getElementById('csv-preview').style.display = 'none';
+    document.getElementById('csv-import-btn').disabled = true;
+    APP_STATE.csvData = null;
+}
+
+function closeCSVImportModal() {
+    document.getElementById('csv-import-modal').classList.remove('active');
+    document.getElementById('csv-file-input').value = '';
+}
+
+function closeAllModals() {
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.classList.remove('active');
     });
 }
 
-// Handle Wheel Form Submit
-async function handleWheelSubmit(e) {
-    e.preventDefault();
+// Wheel Management Functions
+async function viewWheelDetails(wheelId) {
+    const wheel = APP_STATE.wheels.find(w => w.id === wheelId);
+    if (!wheel) return;
 
-    const formData = new FormData();
-    const wheelId = document.getElementById('wheel-id').value;
+    const content = document.getElementById('wheel-details-content');
+    const displayName = `${wheel.year || ''} ${wheel.make || ''} ${wheel.model || ''} ${wheel.trim || ''}`.trim();
 
-    // Collect form data
-    formData.append('sku', document.getElementById('wheel-sku').value || '');
-    formData.append('year', document.getElementById('wheel-year').value);
-    formData.append('make', document.getElementById('wheel-make').value === 'Other'
-        ? document.getElementById('wheel-make-other').value
-        : document.getElementById('wheel-make').value);
-    formData.append('model', document.getElementById('wheel-model').value === 'Other'
-        ? document.getElementById('wheel-model-other').value
-        : document.getElementById('wheel-model').value);
-    formData.append('trim', document.getElementById('wheel-trim').value);
-    formData.append('size', document.getElementById('wheel-size').value);
-    formData.append('boltPattern', document.getElementById('wheel-bolt-pattern').value);
-    formData.append('offset', document.getElementById('wheel-offset').value);
-    formData.append('oemPart', document.getElementById('wheel-oem-part').value);
-    formData.append('condition', document.getElementById('wheel-condition').value);
-    formData.append('price', document.getElementById('wheel-price').value);
-    formData.append('status', document.getElementById('wheel-status').value);
-    formData.append('notes', document.getElementById('wheel-notes').value);
-    formData.append('quantity', document.getElementById('wheel-quantity').value || '1');
+    const imagesHtml = wheel.images && wheel.images.length > 0
+        ? wheel.images.map(img => `<img src="${img}" alt="Wheel image" style="max-width: 200px; margin: 5px;">`).join('')
+        : '<p>No images available</p>';
 
-    // Add images
-    const imageInput = document.getElementById('wheel-images');
-    if (imageInput && imageInput.files) {
-        for (let i = 0; i < imageInput.files.length; i++) {
-            formData.append('images', imageInput.files[i]);
-        }
+    content.innerHTML = `
+        <div style="padding: 1.25rem;">
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1rem;">
+                <div><strong>SKU:</strong> ${escapeHtml(wheel.sku)}</div>
+                <div><strong>Vehicle:</strong> ${escapeHtml(displayName)}</div>
+                <div><strong>Size:</strong> ${escapeHtml(wheel.size)}</div>
+                <div><strong>Bolt Pattern:</strong> ${escapeHtml(wheel.boltPattern)}</div>
+                <div><strong>Offset:</strong> ${escapeHtml(wheel.offset || 'N/A')}</div>
+                <div><strong>OEM Part:</strong> ${escapeHtml(wheel.oemPart || 'N/A')}</div>
+                <div><strong>Condition:</strong> ${escapeHtml(wheel.condition)}</div>
+                <div><strong>Price:</strong> $${parseFloat(wheel.price || 0).toFixed(2)}</div>
+                <div><strong>Status:</strong> ${escapeHtml(wheel.status)}</div>
+            </div>
+            ${wheel.notes ? `<div style="margin-bottom: 1rem;"><strong>Notes:</strong><br>${escapeHtml(wheel.notes)}</div>` : ''}
+            <div><strong>Images:</strong><br>${imagesHtml}</div>
+            <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem;">
+                <button class="btn btn-secondary" onclick="editWheel('${wheel.id}')">Edit</button>
+                <button class="btn btn-primary" onclick="printQRLabel('${wheel.id}')">Print QR Label</button>
+                <button class="btn btn-danger" onclick="deleteWheel('${wheel.id}')">Delete</button>
+            </div>
+        </div>
+    `;
+
+    document.getElementById('wheel-details-modal').classList.add('active');
+}
+
+function editWheel(wheelId) {
+    const wheel = APP_STATE.wheels.find(w => w.id === wheelId);
+    if (!wheel) return;
+
+    closeWheelDetailsModal();
+
+    document.getElementById('wheel-modal-title').textContent = 'Edit Wheel';
+    document.getElementById('wheel-id').value = wheel.id;
+    document.getElementById('wheel-sku').value = wheel.sku || '';
+    document.getElementById('wheel-year').value = wheel.year || '';
+
+    // Handle make
+    if (wheel.make === 'Subaru' || !wheel.make) {
+        document.getElementById('wheel-make').value = 'Subaru';
+    } else {
+        document.getElementById('wheel-make').value = 'Other';
+        document.getElementById('wheel-make-other-group').style.display = 'block';
+        document.getElementById('wheel-make-other').value = wheel.make;
     }
 
-    try {
-        const url = wheelId ? `/api/wheels/${wheelId}` : '/api/wheels';
-        const method = wheelId ? 'PUT' : 'POST';
+    // Handle model
+    const modelSelect = document.getElementById('wheel-model');
+    const modelExists = Array.from(modelSelect.options).some(opt => opt.value === wheel.model);
+    if (modelExists) {
+        modelSelect.value = wheel.model;
+    } else {
+        modelSelect.value = 'Other';
+        document.getElementById('wheel-model-other-group').style.display = 'block';
+        document.getElementById('wheel-model-other').value = wheel.model;
+    }
 
-        const response = await fetchWithAuth(url, {
-            method: method,
-            body: formData
+    document.getElementById('wheel-trim').value = wheel.trim || '';
+    document.getElementById('wheel-size').value = wheel.size || '';
+    document.getElementById('wheel-bolt-pattern').value = wheel.boltPattern || '';
+    document.getElementById('wheel-offset').value = wheel.offset || '';
+    document.getElementById('wheel-oem-part').value = wheel.oemPart || '';
+    document.getElementById('wheel-condition').value = wheel.condition || '';
+    document.getElementById('wheel-price').value = wheel.price || '';
+    document.getElementById('wheel-status').value = wheel.status || '';
+    document.getElementById('wheel-notes').value = wheel.notes || '';
+    document.getElementById('wheel-quantity').value = '1';
+
+    document.getElementById('delete-wheel-btn').style.display = 'block';
+    document.getElementById('image-preview').innerHTML = '';
+
+    document.getElementById('wheel-modal').classList.add('active');
+}
+
+async function deleteWheel(wheelId) {
+    if (!confirm('Are you sure you want to delete this wheel?')) return;
+
+    try {
+        const response = await fetchWithAuth(`/api/wheels/${wheelId}`, {
+            method: 'DELETE'
         });
 
         if (response.ok) {
-            showSuccess(wheelId ? 'Wheel updated successfully' : 'Wheel added successfully');
-            closeWheelModal();
+            showSuccess('Wheel deleted successfully');
+            closeWheelDetailsModal();
             await loadWheels();
         } else {
             const error = await response.json();
-            showError(error.error || 'Failed to save wheel');
+            showError(error.error || 'Failed to delete wheel');
         }
     } catch (error) {
-        console.error('Error saving wheel:', error);
-        showError('Failed to save wheel: ' + error.message);
+        console.error('Error deleting wheel:', error);
+        showError('Failed to delete wheel: ' + error.message);
     }
 }
 
-// Handle Part Form Submit
-async function handlePartSubmit(e) {
-    e.preventDefault();
+async function deleteWheelFromEdit() {
+    const wheelId = document.getElementById('wheel-id').value;
+    if (!wheelId) return;
 
-    const partId = document.getElementById('part-id').value;
-    const partData = {
-        partNumber: document.getElementById('part-number').value,
-        oemPartNumber: document.getElementById('part-oem-number').value,
-        partName: document.getElementById('part-name').value,
-        category: document.getElementById('part-category').value,
-        quantity: parseInt(document.getElementById('part-quantity').value),
-        location: document.getElementById('part-location').value,
-        price: document.getElementById('part-price').value,
-        notes: document.getElementById('part-notes').value
-    };
+    closeWheelModal();
+    await deleteWheel(wheelId);
+}
 
+async function markAsSold(wheelId) {
     try {
-        const url = partId ? `/api/oem-parts/${partId}` : '/api/oem-parts';
-        const method = partId ? 'PUT' : 'POST';
-
-        const response = await fetchWithAuth(url, {
-            method: method,
-            body: JSON.stringify(partData)
+        const response = await fetchWithAuth(`/api/wheels/${wheelId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ status: 'Sold' })
         });
 
         if (response.ok) {
-            showSuccess(partId ? 'Part updated successfully' : 'Part added successfully');
-            closePartModal();
-            await loadOEMParts();
+            showSuccess('Wheel marked as sold');
+            await loadWheels();
         } else {
             const error = await response.json();
-            showError(error.error || 'Failed to save part');
+            showError(error.error || 'Failed to update wheel');
         }
     } catch (error) {
-        console.error('Error saving part:', error);
-        showError('Failed to save part: ' + error.message);
+        console.error('Error marking wheel as sold:', error);
+        showError('Failed to update wheel: ' + error.message);
     }
 }
 
-// Handle Image Selection
-function handleImageSelect(e) {
-    const files = e.target.files;
-    const preview = document.getElementById('image-preview');
-    if (!preview) return;
+async function printQRLabel(wheelId) {
+    try {
+        const wheel = APP_STATE.wheels.find(w => w.id === wheelId);
+        if (!wheel) return;
 
-    preview.innerHTML = '';
+        const labelWindow = window.open(`/api/wheels/${wheelId}/qr-label`, '_blank');
+        if (labelWindow) {
+            labelWindow.addEventListener('load', () => {
+                setTimeout(() => {
+                    labelWindow.print();
+                }, 500);
+            });
+        }
+    } catch (error) {
+        console.error('Error printing QR label:', error);
+        showError('Failed to print QR label');
+    }
+}
 
-    for (let i = 0; i < Math.min(files.length, 10); i++) {
-        const file = files[i];
-        const reader = new FileReader();
+// SKU Generation
+function generateWheelSKU() {
+    const year = document.getElementById('wheel-year').value;
+    const make = document.getElementById('wheel-make').value === 'Other'
+        ? document.getElementById('wheel-make-other').value
+        : document.getElementById('wheel-make').value;
+    const model = document.getElementById('wheel-model').value === 'Other'
+        ? document.getElementById('wheel-model-other').value
+        : document.getElementById('wheel-model').value;
+    const size = document.getElementById('wheel-size').value;
+    const bolt = document.getElementById('wheel-bolt-pattern').value;
 
-        reader.onload = (event) => {
-            const img = document.createElement('img');
-            img.src = event.target.result;
-            img.className = 'preview-image';
-            preview.appendChild(img);
-        };
+    if (!year || !make || !model || !size || !bolt) return;
 
-        reader.readAsDataURL(file);
+    const makeCode = make.substring(0, 3).toUpperCase();
+    const modelCode = model.substring(0, 3).toUpperCase();
+    const sizeCode = size.replace(/[^0-9x.]/gi, '');
+    const boltCode = bolt.replace(/[^0-9x.]/gi, '');
+    const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+
+    const sku = `SPP-${year}${makeCode}${modelCode}-${sizeCode}-${boltCode}-${random}`;
+    document.getElementById('wheel-sku').value = sku;
+}
+
+function handleMakeChange() {
+    const makeSelect = document.getElementById('wheel-make');
+    const otherGroup = document.getElementById('wheel-make-other-group');
+
+    if (makeSelect.value === 'Other') {
+        otherGroup.style.display = 'block';
+    } else {
+        otherGroup.style.display = 'none';
+    }
+    generateWheelSKU();
+}
+
+function handleModelChange() {
+    const modelSelect = document.getElementById('wheel-model');
+    const otherGroup = document.getElementById('wheel-model-other-group');
+
+    if (modelSelect.value === 'Other') {
+        otherGroup.style.display = 'block';
+    } else {
+        otherGroup.style.display = 'none';
+    }
+    generateWheelSKU();
+}
+
+function handleTemplateMakeChange() {
+    const makeSelect = document.getElementById('template-make');
+    const otherGroup = document.getElementById('template-make-other-group');
+
+    if (makeSelect.value === 'Other') {
+        otherGroup.style.display = 'block';
+    } else {
+        otherGroup.style.display = 'none';
+    }
+}
+
+function handleTemplateModelChange() {
+    const modelSelect = document.getElementById('template-model');
+    const otherGroup = document.getElementById('template-model-other-group');
+
+    if (modelSelect.value === 'Other') {
+        otherGroup.style.display = 'block';
+    } else {
+        otherGroup.style.display = 'none';
+    }
+}
+
+// Quick Add and Templates
+function handleQuickAddSelect(select) {
+    const value = select.value;
+
+    if (value === 'manage') {
+        openTemplatesManageModal();
+        select.value = '';
+    } else if (value) {
+        const template = APP_STATE.wheelTemplates.find(t => t.id === value);
+        if (template) {
+            fillWheelFormFromTemplate(template);
+            select.value = '';
+        }
+    }
+}
+
+function fillWheelFormFromTemplate(template) {
+    document.getElementById('wheel-year').value = template.year || '';
+    document.getElementById('wheel-make').value = template.make || 'Subaru';
+    document.getElementById('wheel-model').value = template.model || '';
+    document.getElementById('wheel-trim').value = template.trim || '';
+    document.getElementById('wheel-size').value = template.size || '';
+    document.getElementById('wheel-bolt-pattern').value = template.boltPattern || '';
+    document.getElementById('wheel-offset').value = template.offset || '';
+    document.getElementById('wheel-oem-part').value = template.oemPart || '';
+
+    generateWheelSKU();
+    openAddWheelModal();
+}
+
+function openTemplatesManageModal() {
+    openTemplateModal();
+}
+
+// OEM Parts Sorting
+function sortOEMParts(field) {
+    if (APP_STATE.oemSortField === field) {
+        APP_STATE.oemSortDirection = APP_STATE.oemSortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+        APP_STATE.oemSortField = field;
+        APP_STATE.oemSortDirection = 'asc';
+    }
+
+    const sorted = [...APP_STATE.oemParts].sort((a, b) => {
+        let aVal = a[field];
+        let bVal = b[field];
+
+        if (field === 'quantity' || field === 'price') {
+            aVal = parseFloat(aVal) || 0;
+            bVal = parseFloat(bVal) || 0;
+        } else {
+            aVal = String(aVal || '').toLowerCase();
+            bVal = String(bVal || '').toLowerCase();
+        }
+
+        if (aVal < bVal) return APP_STATE.oemSortDirection === 'asc' ? -1 : 1;
+        if (aVal > bVal) return APP_STATE.oemSortDirection === 'asc' ? 1 : -1;
+        return 0;
+    });
+
+    renderOEMParts(sorted);
+    updateSortIndicators(field);
+}
+
+function updateSortIndicators(field) {
+    document.querySelectorAll('.sort-indicator').forEach(el => el.textContent = '');
+
+    const indicator = document.getElementById(`sort-${field.replace(/([A-Z])/g, '-$1').toLowerCase()}`);
+    if (indicator) {
+        indicator.textContent = APP_STATE.oemSortDirection === 'asc' ? ' ↑' : ' ↓';
+    }
+}
+
+// CSV Import Functions
+function handleCSVFileSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const text = e.target.result;
+            const lines = text.split('\n').filter(line => line.trim());
+
+            if (lines.length < 2) {
+                showError('CSV file is empty or invalid');
+                return;
+            }
+
+            const headers = lines[0].split(',').map(h => h.trim());
+            const data = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(',').map(v => v.trim());
+                const row = {};
+                headers.forEach((header, index) => {
+                    row[header] = values[index] || '';
+                });
+                data.push(row);
+            }
+
+            APP_STATE.csvData = data;
+            displayCSVPreview(data, headers);
+            document.getElementById('csv-import-btn').disabled = false;
+        } catch (error) {
+            console.error('Error parsing CSV:', error);
+            showError('Failed to parse CSV file');
+        }
+    };
+
+    reader.readAsText(file);
+}
+
+function displayCSVPreview(data, headers) {
+    const preview = document.getElementById('csv-preview-content');
+    const previewData = data.slice(0, 5);
+
+    let html = '<table class="inventory-table"><thead><tr>';
+    headers.forEach(h => {
+        html += `<th>${escapeHtml(h)}</th>`;
+    });
+    html += '</tr></thead><tbody>';
+
+    previewData.forEach(row => {
+        html += '<tr>';
+        headers.forEach(h => {
+            html += `<td>${escapeHtml(row[h] || '')}</td>`;
+        });
+        html += '</tr>';
+    });
+
+    html += '</tbody></table>';
+    preview.innerHTML = html;
+
+    document.getElementById('csv-row-count').textContent = `Total rows to import: ${data.length}`;
+    document.getElementById('csv-preview').style.display = 'block';
+}
+
+async function processCSVImport() {
+    if (!APP_STATE.csvData || APP_STATE.csvData.length === 0) {
+        showError('No data to import');
+        return;
+    }
+
+    try {
+        const response = await fetchWithAuth('/api/wheels/import-csv', {
+            method: 'POST',
+            body: JSON.stringify({ wheels: APP_STATE.csvData })
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            showSuccess(`Successfully imported ${result.imported} wheels`);
+            closeCSVImportModal();
+            await loadWheels();
+        } else {
+            const error = await response.json();
+            showError(error.error || 'Failed to import CSV');
+        }
+    } catch (error) {
+        console.error('Error importing CSV:', error);
+        showError('Failed to import CSV: ' + error.message);
+    }
+}
+
+function downloadCSVTemplate() {
+    const headers = ['year', 'make', 'model', 'trim', 'size', 'boltPattern', 'offset', 'oemPart', 'condition', 'price', 'status', 'notes'];
+    const sampleData = [
+        ['2024', 'Subaru', 'Outback', 'Premium', '18x7.5', '5x114.3', '+55mm', '28111FL01A', 'Excellent', '250', 'Available', 'Like new condition']
+    ];
+
+    let csv = headers.join(',') + '\n';
+    sampleData.forEach(row => {
+        csv += row.join(',') + '\n';
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'wheel_import_template.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+}
+
+// QR Scanner Functions
+let html5QrCode = null;
+
+function openQRScanner() {
+    document.getElementById('qr-scanner-modal').classList.add('active');
+    startQRScanner();
+}
+
+function closeQRScanner() {
+    stopQRScanner();
+    document.getElementById('qr-scanner-modal').classList.remove('active');
+}
+
+async function startQRScanner() {
+    try {
+        if (!window.Html5Qrcode) {
+            showError('QR Scanner library not loaded');
+            return;
+        }
+
+        html5QrCode = new Html5Qrcode("qr-reader");
+
+        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+        await html5QrCode.start(
+            { facingMode: "environment" },
+            config,
+            (decodedText) => {
+                onScanSuccess(decodedText);
+            },
+            (errorMessage) => {
+                // Ignore scan errors
+            }
+        );
+
+        document.getElementById('qr-status').textContent = 'Scanning... Point camera at QR code';
+    } catch (error) {
+        console.error('QR Scanner error:', error);
+        document.getElementById('qr-status').textContent = 'Failed to start camera. Please check permissions.';
+    }
+}
+
+function stopQRScanner() {
+    if (html5QrCode) {
+        html5QrCode.stop().then(() => {
+            html5QrCode.clear();
+            html5QrCode = null;
+        }).catch(err => {
+            console.error('Error stopping scanner:', err);
+        });
+    }
+}
+
+function onScanSuccess(decodedText) {
+    stopQRScanner();
+    closeQRScanner();
+
+    // Find wheel by SKU
+    const wheel = APP_STATE.wheels.find(w => w.sku === decodedText);
+
+    if (wheel) {
+        viewWheelDetails(wheel.id);
+    } else {
+        showError(`No wheel found with SKU: ${decodedText}`);
     }
 }
