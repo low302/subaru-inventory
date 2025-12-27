@@ -12,7 +12,12 @@ const APP_STATE = {
     user: null,
     token: null,
     wheelsById: new Map(),
-    imageUrlCache: new Map()
+    imageUrlCache: new Map(),
+    // NEW: Category filtering
+    activeCategory: 'ALL',
+    activeStatus: 'ALL',
+    showSoldArchive: false,
+    categoryStats: null
 };
 
 // Constants
@@ -21,6 +26,80 @@ const QR_SCANNER_STATES = {
     NOT_STARTED: 0,
     SCANNING: 1,
     PAUSED: 2
+};
+
+// NEW: Wheel Categories
+const WHEEL_CATEGORIES = {
+    OEM: {
+        label: "OEM Wheels",
+        description: "Original Equipment Manufacturer wheels",
+        color: "#0066cc",
+        icon: "🏭",
+        subcategories: ["Stock", "Limited Edition", "Sport Package"]
+    },
+    AFTERMARKET: {
+        label: "Aftermarket",
+        description: "Third-party manufactured wheels",
+        color: "#ff6600",
+        icon: "🔧",
+        subcategories: ["Performance", "Luxury", "Off-Road", "Custom"]
+    },
+    WINTER: {
+        label: "Winter/Steel",
+        description: "Winter or steel wheels",
+        color: "#00aaff",
+        icon: "❄️",
+        subcategories: ["Steel", "Alloy Winter"]
+    },
+    REPLICA: {
+        label: "Replica/OEM-Style",
+        description: "Aftermarket wheels styled like OEM",
+        color: "#9933cc",
+        icon: "🔄",
+        subcategories: ["OEM-Style", "Reproduction"]
+    },
+    CUSTOM: {
+        label: "Custom/Modified",
+        description: "Modified or custom-built wheels",
+        color: "#cc0000",
+        icon: "⚡",
+        subcategories: ["Powder Coated", "Refinished", "Restored"]
+    },
+    UNKNOWN: {
+        label: "Uncategorized",
+        description: "Not yet categorized",
+        color: "#666666",
+        icon: "❓",
+        subcategories: []
+    }
+};
+
+// NEW: Wheel Statuses
+const WHEEL_STATUSES = {
+    AVAILABLE: {
+        label: "Available",
+        color: "#28a745",
+        icon: "✓",
+        showInMain: true
+    },
+    RESERVED: {
+        label: "Reserved",
+        color: "#ffc107",
+        icon: "⏳",
+        showInMain: true
+    },
+    SOLD: {
+        label: "Sold",
+        color: "#6c757d",
+        icon: "💰",
+        showInMain: false
+    },
+    DAMAGED: {
+        label: "Damaged",
+        color: "#dc3545",
+        icon: "⚠️",
+        showInMain: false
+    }
 };
 
 // Initialize App
@@ -170,7 +249,8 @@ async function initializeApp() {
         await Promise.all([
             loadOEMParts(),
             loadWheels(),
-            loadWheelTemplates()
+            loadWheelTemplates(),
+            loadCategoryStats()  // NEW: Load category statistics
         ]);
         updateStats();
         hideLoadingState();
@@ -250,6 +330,7 @@ function setupEventListeners() {
     // Forms
     document.getElementById('part-form')?.addEventListener('submit', handlePartSubmit);
     document.getElementById('wheel-form')?.addEventListener('submit', handleWheelSubmit);
+    document.getElementById('mark-sold-form')?.addEventListener('submit', handleMarkAsSold);  // NEW
 
     // File input
     document.getElementById('wheel-images')?.addEventListener('change', handleImageSelect);
@@ -468,7 +549,12 @@ async function loadWheels() {
         APP_STATE.wheelsById.clear();
         data.forEach(wheel => APP_STATE.wheelsById.set(wheel.id, wheel));
 
-        renderWheels();
+        // Use new category-aware rendering
+        if (APP_STATE.showSoldArchive) {
+            renderSoldArchive();
+        } else {
+            renderWheelsView();
+        }
         updateStats();
     } catch (error) {
         console.error('Error loading wheels:', error);
@@ -651,6 +737,8 @@ async function handleWheelSubmit(e) {
     formData.append('boltPattern', document.getElementById('wheel-bolt-pattern').value);
     formData.append('offset', document.getElementById('wheel-offset').value);
     formData.append('oemPart', document.getElementById('wheel-oem-part').value);
+    formData.append('category', document.getElementById('wheel-category').value || 'UNKNOWN');  // NEW
+    formData.append('subcategory', document.getElementById('wheel-subcategory').value || '');   // NEW
     formData.append('condition', document.getElementById('wheel-condition').value);
     formData.append('price', document.getElementById('wheel-price').value);
     formData.append('status', document.getElementById('wheel-status').value);
@@ -875,6 +963,8 @@ function editWheel(wheelId) {
     document.getElementById('wheel-bolt-pattern').value = wheel.boltPattern || '';
     document.getElementById('wheel-offset').value = wheel.offset || '';
     document.getElementById('wheel-oem-part').value = wheel.oemPart || '';
+    document.getElementById('wheel-category').value = wheel.category || 'UNKNOWN';  // NEW
+    document.getElementById('wheel-subcategory').value = wheel.subcategory || '';   // NEW
     document.getElementById('wheel-condition').value = wheel.condition || '';
     document.getElementById('wheel-price').value = wheel.price || '';
     document.getElementById('wheel-status').value = wheel.status || '';
@@ -1529,3 +1619,479 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+// ============================================================================
+// CATEGORY MANAGEMENT FUNCTIONS
+// ============================================================================
+
+// Load category statistics
+async function loadCategoryStats() {
+    try {
+        const response = await fetchWithAuth('/api/wheels/stats/categories');
+        const { data } = await handleApiResponse(response);
+        APP_STATE.categoryStats = data;
+    } catch (error) {
+        console.error('Error loading category stats:', error);
+        // Non-critical, don't show error to user
+    }
+}
+
+// Filter wheels by category
+function filterWheelsByCategory(category) {
+    APP_STATE.activeCategory = category;
+    renderWheelsView();
+}
+
+// Filter wheels by status
+function filterWheelsByStatus(status) {
+    APP_STATE.activeStatus = status;
+    renderWheelsView();
+}
+
+// Toggle sold archive view
+function toggleSoldArchive() {
+    APP_STATE.showSoldArchive = !APP_STATE.showSoldArchive;
+    APP_STATE.activeCategory = 'ALL';
+    APP_STATE.activeStatus = 'ALL';
+
+    if (APP_STATE.showSoldArchive) {
+        renderSoldArchive();
+    } else {
+        renderWheelsView();
+    }
+}
+
+// Get filtered wheels based on current state
+function getFilteredWheels() {
+    let filtered = APP_STATE.wheels;
+
+    // Filter by sold archive mode
+    if (APP_STATE.showSoldArchive) {
+        filtered = filtered.filter(w => w.status === 'Sold');
+    } else {
+        filtered = filtered.filter(w => w.status !== 'Sold');
+    }
+
+    // Filter by category
+    if (APP_STATE.activeCategory !== 'ALL') {
+        filtered = filtered.filter(w => (w.category || 'UNKNOWN') === APP_STATE.activeCategory);
+    }
+
+    // Filter by status (for active inventory only)
+    if (!APP_STATE.showSoldArchive && APP_STATE.activeStatus !== 'ALL') {
+        filtered = filtered.filter(w => w.status === APP_STATE.activeStatus);
+    }
+
+    return filtered;
+}
+
+// Render category badge
+function renderCategoryBadge(category, subcategory) {
+    const cat = WHEEL_CATEGORIES[category] || WHEEL_CATEGORIES.UNKNOWN;
+    const subText = subcategory ? ` / ${escapeHtml(subcategory)}` : '';
+    return `<span class="badge category-badge" style="background-color: ${cat.color}">
+        ${cat.icon} ${escapeHtml(cat.label)}${subText}
+    </span>`;
+}
+
+// Render status badge
+function renderStatusBadge(status) {
+    const statusKey = status.toUpperCase();
+    const statusConfig = WHEEL_STATUSES[statusKey] || WHEEL_STATUSES.AVAILABLE;
+    return `<span class="badge status-badge" style="background-color: ${statusConfig.color}">
+        ${statusConfig.icon} ${escapeHtml(statusConfig.label)}
+    </span>`;
+}
+
+// Render category tabs
+function renderCategoryTabs() {
+    const stats = APP_STATE.categoryStats || {};
+    const categories = Object.keys(WHEEL_CATEGORIES);
+
+    // Count wheels excluding sold
+    const availableWheels = APP_STATE.wheels.filter(w => w.status !== 'Sold');
+
+    let html = '<div class="category-tabs">';
+
+    // All tab
+    html += `
+        <button class="category-tab ${APP_STATE.activeCategory === 'ALL' ? 'active' : ''}"
+                onclick="filterWheelsByCategory('ALL')">
+            📊 All (${availableWheels.length})
+        </button>
+    `;
+
+    // Category tabs
+    categories.forEach(catKey => {
+        const cat = WHEEL_CATEGORIES[catKey];
+        const count = stats.byCategory?.[catKey]?.count || 0;
+        html += `
+            <button class="category-tab ${APP_STATE.activeCategory === catKey ? 'active' : ''}"
+                    onclick="filterWheelsByCategory('${catKey}')">
+                ${cat.icon} ${cat.label} (${count})
+            </button>
+        `;
+    });
+
+    html += '</div>';
+    return html;
+}
+
+// Render status badges
+function renderStatusBadges() {
+    const stats = APP_STATE.categoryStats || {};
+
+    let html = '<div class="status-badges">';
+
+    // All inventory
+    html += `
+        <button class="status-badge ${APP_STATE.activeStatus === 'ALL' ? 'active' : ''}"
+                onclick="filterWheelsByStatus('ALL')">
+            All Inventory
+        </button>
+    `;
+
+    // Status badges (only those that show in main)
+    Object.keys(WHEEL_STATUSES).forEach(statusKey => {
+        const statusConfig = WHEEL_STATUSES[statusKey];
+        if (statusConfig.showInMain) {
+            const count = stats.byStatus?.[statusConfig.label]?.count || 0;
+            html += `
+                <button class="status-badge ${APP_STATE.activeStatus === statusConfig.label ? 'active' : ''}"
+                        onclick="filterWheelsByStatus('${statusConfig.label}')">
+                    ${statusConfig.icon} ${statusConfig.label} (${count})
+                </button>
+            `;
+        }
+    });
+
+    html += '</div>';
+    return html;
+}
+
+// Render complete wheels view with filters
+function renderWheelsView() {
+    const container = document.getElementById('wheels-container');
+    if (!container) return;
+
+    const wheels = getFilteredWheels();
+
+    let html = '';
+
+    // Show category and status filters
+    html += renderCategoryTabs();
+    html += renderStatusBadges();
+
+    // Show wheel count
+    html += `<div class="results-count">Showing ${wheels.length} wheel${wheels.length !== 1 ? 's' : ''}</div>`;
+
+    if (wheels.length === 0) {
+        html += renderEmptyState('No wheels found with current filters.');
+    } else {
+        html += `
+            <table class="table wheels-table">
+                <thead>
+                    <tr>
+                        <th>SKU</th>
+                        <th>Category</th>
+                        <th>Year</th>
+                        <th>Make/Model</th>
+                        <th>Size</th>
+                        <th>Condition</th>
+                        <th>Price</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${wheels.map(wheel => `
+                        <tr onclick="showWheelDetails('${wheel.id}')" style="cursor: pointer;">
+                            <td><strong>${escapeHtml(wheel.sku)}</strong></td>
+                            <td>${renderCategoryBadge(wheel.category, wheel.subcategory)}</td>
+                            <td>${escapeHtml(wheel.year || 'N/A')}</td>
+                            <td>${escapeHtml(wheel.make || '')} ${escapeHtml(wheel.model || '')}</td>
+                            <td>${escapeHtml(wheel.size || 'N/A')}</td>
+                            <td>${escapeHtml(wheel.condition || 'N/A')}</td>
+                            <td>$${parseFloat(wheel.price || 0).toFixed(2)}</td>
+                            <td>${renderStatusBadge(wheel.status)}</td>
+                            <td onclick="event.stopPropagation();">
+                                ${wheel.status !== 'Sold' ? `
+                                    <button class="btn btn-sm btn-success" onclick="openMarkAsSoldModal('${wheel.id}')">
+                                        Sell
+                                    </button>
+                                ` : ''}
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    }
+
+    container.innerHTML = html;
+}
+
+// Render sold archive view
+function renderSoldArchive() {
+    const container = document.getElementById('wheels-container');
+    if (!container) return;
+
+    const soldWheels = APP_STATE.wheels.filter(w => w.status === 'Sold');
+
+    if (soldWheels.length === 0) {
+        container.innerHTML = `
+            <div class="sold-archive-header">
+                <h2>💰 Sold Wheels Archive</h2>
+            </div>
+            ${renderEmptyState('No sold wheels yet.')}
+        `;
+        return;
+    }
+
+    // Calculate statistics
+    const totalRevenue = soldWheels.reduce((sum, w) => sum + parseFloat(w.soldPrice || w.price || 0), 0);
+    const avgPrice = totalRevenue / soldWheels.length;
+
+    const html = `
+        <div class="sold-archive-header">
+            <h2>💰 Sold Wheels Archive</h2>
+            <div class="sold-archive-actions">
+                <button class="btn btn-secondary" onclick="exportSoldWheelsCSV()">Export CSV</button>
+                <button class="btn btn-secondary" onclick="toggleSoldArchive()">Back to Inventory</button>
+            </div>
+        </div>
+
+        <div class="sold-stats">
+            <div class="stat-card stat-card-revenue">
+                <div class="stat-value">$${totalRevenue.toFixed(2)}</div>
+                <div class="stat-label">Total Revenue</div>
+            </div>
+            <div class="stat-card stat-card-count">
+                <div class="stat-value">${soldWheels.length}</div>
+                <div class="stat-label">Units Sold</div>
+            </div>
+            <div class="stat-card stat-card-average">
+                <div class="stat-value">$${avgPrice.toFixed(2)}</div>
+                <div class="stat-label">Average Price</div>
+            </div>
+        </div>
+
+        <table class="table sold-table">
+            <thead>
+                <tr>
+                    <th>SKU</th>
+                    <th>Details</th>
+                    <th>Category</th>
+                    <th>Sold Date</th>
+                    <th>Listed Price</th>
+                    <th>Sale Price</th>
+                    <th>Customer</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${soldWheels.map(wheel => `
+                    <tr onclick="showWheelDetails('${wheel.id}')" style="cursor: pointer;">
+                        <td><strong>${escapeHtml(wheel.sku)}</strong></td>
+                        <td>
+                            ${escapeHtml(wheel.year || '')} ${escapeHtml(wheel.make || '')} ${escapeHtml(wheel.model || '')}<br>
+                            <small>${escapeHtml(wheel.size || 'N/A')}</small>
+                        </td>
+                        <td>${renderCategoryBadge(wheel.category, wheel.subcategory)}</td>
+                        <td>${wheel.soldAt ? new Date(wheel.soldAt).toLocaleDateString() : 'N/A'}</td>
+                        <td>$${parseFloat(wheel.price || 0).toFixed(2)}</td>
+                        <td><strong>$${parseFloat(wheel.soldPrice || wheel.price || 0).toFixed(2)}</strong></td>
+                        <td>${escapeHtml(wheel.soldTo || 'N/A')}</td>
+                        <td onclick="event.stopPropagation();">
+                            <button class="btn btn-sm btn-secondary" onclick="printReceipt('${wheel.id}')">
+                                Receipt
+                            </button>
+                        </td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+
+    container.innerHTML = html;
+}
+
+// Open mark as sold modal
+function openMarkAsSoldModal(wheelId) {
+    const wheel = APP_STATE.wheels.find(w => w.id === wheelId);
+    if (!wheel) return;
+
+    const modal = document.getElementById('mark-sold-modal');
+    if (!modal) return;
+
+    document.getElementById('sold-wheel-id').value = wheel.id;
+    document.getElementById('sold-sku-display').textContent = wheel.sku;
+    document.getElementById('sold-listed-price').textContent = `$${parseFloat(wheel.price || 0).toFixed(2)}`;
+    document.getElementById('sold-price').value = wheel.price || '0';
+    document.getElementById('sold-date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('sold-customer').value = '';
+    document.getElementById('sold-notes').value = '';
+
+    modal.classList.add('active');
+    markFormClean();
+}
+
+// Close mark as sold modal
+function closeMarkAsSoldModal() {
+    if (!checkUnsavedChanges()) return;
+
+    const modal = document.getElementById('mark-sold-modal');
+    if (modal) {
+        modal.classList.remove('active');
+        document.getElementById('mark-sold-form')?.reset();
+        markFormClean();
+    }
+}
+
+// Handle mark as sold form submission
+async function handleMarkAsSold(e) {
+    e.preventDefault();
+
+    const wheelId = document.getElementById('sold-wheel-id').value;
+    const soldData = {
+        soldPrice: parseFloat(document.getElementById('sold-price').value),
+        soldAt: new Date(document.getElementById('sold-date').value).toISOString(),
+        soldTo: document.getElementById('sold-customer').value,
+        soldNotes: document.getElementById('sold-notes').value
+    };
+
+    try {
+        const response = await fetchWithAuth(`/api/wheels/${wheelId}/mark-sold`, {
+            method: 'PATCH',
+            body: JSON.stringify(soldData)
+        });
+
+        if (response.ok) {
+            const { data } = await response.json();
+            const index = APP_STATE.wheels.findIndex(w => w.id === wheelId);
+            if (index !== -1) {
+                APP_STATE.wheels[index] = data;
+            }
+
+            closeMarkAsSoldModal();
+            await loadCategoryStats();
+            renderWheelsView();
+            showSuccess('Wheel marked as sold successfully!');
+        } else {
+            const error = await response.json();
+            showError(error.error || 'Failed to mark wheel as sold');
+        }
+    } catch (error) {
+        console.error('Error marking wheel as sold:', error);
+        showError('Failed to mark wheel as sold: ' + error.message);
+    }
+}
+
+// Export sold wheels to CSV
+function exportSoldWheelsCSV() {
+    const soldWheels = APP_STATE.wheels.filter(w => w.status === 'Sold');
+
+    if (soldWheels.length === 0) {
+        showError('No sold wheels to export');
+        return;
+    }
+
+    const headers = [
+        'SKU', 'Year', 'Make', 'Model', 'Trim', 'Size', 'Bolt Pattern', 'Offset',
+        'OEM Part', 'Condition', 'Category', 'Subcategory',
+        'Listed Price', 'Sale Price', 'Sale Date', 'Customer', 'Notes'
+    ];
+
+    const rows = soldWheels.map(wheel => [
+        wheel.sku,
+        wheel.year || '',
+        wheel.make || '',
+        wheel.model || '',
+        wheel.trim || '',
+        wheel.size || '',
+        wheel.boltPattern || '',
+        wheel.offset || '',
+        wheel.oemPart || '',
+        wheel.condition || '',
+        wheel.category || '',
+        wheel.subcategory || '',
+        wheel.price || '0',
+        wheel.soldPrice || wheel.price || '0',
+        wheel.soldAt ? new Date(wheel.soldAt).toLocaleDateString() : '',
+        wheel.soldTo || '',
+        wheel.soldNotes || ''
+    ]);
+
+    const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `sold-wheels-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+
+    showSuccess('Sold wheels exported successfully!');
+}
+
+// Print receipt for sold wheel
+function printReceipt(wheelId) {
+    const wheel = APP_STATE.wheels.find(w => w.id === wheelId);
+    if (!wheel || wheel.status !== 'Sold') return;
+
+    const receiptWindow = window.open('', '_blank', 'width=800,height=600');
+    if (!receiptWindow) {
+        showError('Popup blocked. Please allow popups for this site.');
+        return;
+    }
+
+    const receiptHTML = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Sale Receipt - ${escapeHtml(wheel.sku)}</title>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    max-width: 800px;
+                    margin: 0 auto;
+                    padding: 20px;
+                }
+                h1 { border-bottom: 2px solid #333; padding-bottom: 10px; }
+                .receipt-info { margin: 20px 0; }
+                .receipt-info div { margin: 10px 0; }
+                .receipt-total { font-size: 1.5em; font-weight: bold; margin-top: 20px; }
+                @media print {
+                    button { display: none; }
+                }
+            </style>
+        </head>
+        <body>
+            <h1>Subaru Parts Plus - Sale Receipt</h1>
+            <div class="receipt-info">
+                <div><strong>Date:</strong> ${wheel.soldAt ? new Date(wheel.soldAt).toLocaleDateString() : 'N/A'}</div>
+                <div><strong>Customer:</strong> ${escapeHtml(wheel.soldTo || 'N/A')}</div>
+                <div><strong>SKU:</strong> ${escapeHtml(wheel.sku)}</div>
+                <div><strong>Description:</strong> ${escapeHtml(wheel.year || '')} ${escapeHtml(wheel.make || '')} ${escapeHtml(wheel.model || '')} ${escapeHtml(wheel.trim || '')}</div>
+                <div><strong>Size:</strong> ${escapeHtml(wheel.size || 'N/A')}</div>
+                <div><strong>Bolt Pattern:</strong> ${escapeHtml(wheel.boltPattern || 'N/A')}</div>
+                <div><strong>Offset:</strong> ${escapeHtml(wheel.offset || 'N/A')}</div>
+                <div><strong>OEM Part:</strong> ${escapeHtml(wheel.oemPart || 'N/A')}</div>
+                <div><strong>Condition:</strong> ${escapeHtml(wheel.condition || 'N/A')}</div>
+                ${wheel.soldNotes ? `<div><strong>Notes:</strong> ${escapeHtml(wheel.soldNotes)}</div>` : ''}
+                <div class="receipt-total">Total: $${parseFloat(wheel.soldPrice || wheel.price || 0).toFixed(2)}</div>
+            </div>
+            <button onclick="window.print()">Print Receipt</button>
+            <button onclick="window.close()">Close</button>
+        </body>
+        </html>
+    `;
+
+    receiptWindow.document.write(receiptHTML);
+    receiptWindow.document.close();
+}

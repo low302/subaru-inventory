@@ -1263,3 +1263,264 @@ body {
     display: flex;
     gap: 0.5rem;
 }
+/* ============================================================================
+   CATEGORY & SOLD ARCHIVE STYLES
+   ============================================================================ */
+
+/* Category Tabs */
+.category-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.category-tab {
+    padding: 0.5rem 1rem;
+    border: 2px solid transparent;
+    border-radius: 6px;
+    background: white;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+    font-weight: 500;
+}
+
+.category-tab:hover {
+    border-color: #0066cc;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.category-tab.active {
+    background: #0066cc;
+    color: white;
+    font-weight: bold;
+    border-color: #0066cc;
+}
+
+/* Status Badges */
+.status-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+}
+
+.status-badge {
+    padding: 0.375rem 0.75rem;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    background: white;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: all 0.2s;
+}
+
+.status-badge:hover {
+    background: #e9ecef;
+}
+
+.status-badge.active {
+    background: #28a745;
+    color: white;
+    border-color: #28a745;
+}
+
+/* Results Count */
+.results-count {
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    color: #6c757d;
+    padding: 0.5rem 1rem;
+    background: #f8f9fa;
+    border-radius: 4px;
+}
+
+/* Badge Components */
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: white;
+    white-space: nowrap;
+}
+
+.category-badge {
+    font-size: 0.8rem;
+}
+
+.status-badge-inline {
+    font-size: 0.75rem;
+}
+
+/* Sold Archive Header */
+.sold-archive-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.sold-archive-header h2 {
+    margin: 0;
+    color: #333;
+}
+
+.sold-archive-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Sold Statistics Cards */
+.sold-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.stat-card {
+    padding: 1.5rem;
+    border-radius: 8px;
+    color: white;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.stat-card-revenue {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.stat-card-count {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.stat-card-average {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+
+/* Sold Table Styling */
+.sold-table tbody tr {
+    opacity: 0.85;
+}
+
+.sold-table tbody tr:hover {
+    opacity: 1;
+    background: #f8f9fa;
+}
+
+/* Mark as Sold Modal */
+.form-info {
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 6px;
+    margin-bottom: 1rem;
+}
+
+.form-info p {
+    margin: 0.5rem 0;
+}
+
+.form-warning {
+    padding: 0.75rem;
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 4px;
+    margin: 1rem 0;
+    color: #856404;
+}
+
+.form-warning p {
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+/* Mobile Responsiveness for Categories */
+@media (max-width: 768px) {
+    .category-tabs {
+        padding: 0.75rem;
+    }
+
+    .category-tab {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.8rem;
+    }
+
+    .status-badges {
+        padding: 0.5rem;
+    }
+
+    .status-badge {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+    }
+
+    .sold-archive-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .sold-archive-actions {
+        width: 100%;
+    }
+
+    .sold-archive-actions button {
+        flex: 1;
+    }
+
+    .sold-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .stat-value {
+        font-size: 1.5rem;
+    }
+
+    .sold-table {
+        font-size: 0.8rem;
+    }
+
+    .sold-table th,
+    .sold-table td {
+        padding: 0.5rem 0.25rem;
+    }
+}
+
+/* Category-Specific Wheel Table */
+.wheels-table tbody tr {
+    transition: background-color 0.2s;
+}
+
+.wheels-table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+/* Smooth transitions */
+.category-tab,
+.status-badge,
+.badge {
+    transition: all 0.2s ease-in-out;
+}

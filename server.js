@@ -430,8 +430,19 @@ app.post('/api/wheels', authenticate, upload.array('images', 10), asyncHandler(a
         status: req.body.status || 'Available',
         notes: req.body.notes || '',
         images: imagePaths,
+        // NEW: Category fields
+        category: req.body.category || 'UNKNOWN',
+        subcategory: req.body.subcategory || '',
+        tags: req.body.tags || [],
+        // NEW: Sale tracking (empty until sold)
+        soldAt: null,
+        soldPrice: null,
+        soldTo: null,
+        soldNotes: null,
         createdAt: new Date().toISOString(),
-        createdBy: req.user.username
+        createdBy: req.user.username,
+        updatedAt: null,
+        updatedBy: null
     };
 
     wheels.push(newWheel);
@@ -531,6 +542,91 @@ app.delete('/api/wheels/:id/image', authenticate, [
     await writeData(WHEELS_FILE, wheels);
     logger.info(`Image deleted from wheel ${req.params.id} by ${req.user.username}`);
     res.json({ success: true, data: wheel });
+}));
+
+// NEW: Mark wheel as sold
+app.patch('/api/wheels/:id/mark-sold', authenticate, [
+    param('id').isUUID().withMessage('Invalid wheel ID'),
+    body('soldPrice').isFloat({ min: 0 }).withMessage('Sale price must be a positive number'),
+    body('soldAt').optional().isISO8601().withMessage('Invalid date format'),
+    body('soldTo').optional().trim(),
+    body('soldNotes').optional().trim()
+], validate, asyncHandler(async (req, res) => {
+    const wheels = await readData(WHEELS_FILE);
+    const index = wheels.findIndex(w => w.id === req.params.id);
+
+    if (index === -1) {
+        return res.status(404).json({ success: false, error: 'Wheel not found' });
+    }
+
+    wheels[index] = {
+        ...wheels[index],
+        status: 'Sold',
+        soldAt: req.body.soldAt || new Date().toISOString(),
+        soldPrice: req.body.soldPrice.toString(),
+        soldTo: req.body.soldTo || '',
+        soldNotes: req.body.soldNotes || '',
+        updatedAt: new Date().toISOString(),
+        updatedBy: req.user.username
+    };
+
+    await writeData(WHEELS_FILE, wheels);
+    logger.info(`Wheel marked as sold: ${wheels[index].sku} for $${req.body.soldPrice} by ${req.user.username}`);
+    res.json({ success: true, data: wheels[index] });
+}));
+
+// NEW: Get category statistics
+app.get('/api/wheels/stats/categories', authenticate, asyncHandler(async (req, res) => {
+    const wheels = await readData(WHEELS_FILE);
+
+    const stats = {
+        byCategory: {},
+        byStatus: {},
+        totalWheels: wheels.length,
+        totalValue: 0,
+        availableCount: 0,
+        soldStats: {
+            count: 0,
+            totalRevenue: 0,
+            averagePrice: 0
+        }
+    };
+
+    wheels.forEach(wheel => {
+        // Category stats
+        const cat = wheel.category || 'UNKNOWN';
+        if (!stats.byCategory[cat]) {
+            stats.byCategory[cat] = { count: 0, value: 0 };
+        }
+        stats.byCategory[cat].count++;
+        stats.byCategory[cat].value += parseFloat(wheel.price || 0);
+
+        // Status stats
+        const status = wheel.status || 'Available';
+        if (!stats.byStatus[status]) {
+            stats.byStatus[status] = { count: 0, value: 0 };
+        }
+        stats.byStatus[status].count++;
+        stats.byStatus[status].value += parseFloat(wheel.price || 0);
+
+        // Sold stats
+        if (status === 'Sold' && wheel.soldPrice) {
+            stats.soldStats.count++;
+            stats.soldStats.totalRevenue += parseFloat(wheel.soldPrice);
+        }
+
+        // Total value (available only)
+        if (status === 'Available') {
+            stats.totalValue += parseFloat(wheel.price || 0);
+            stats.availableCount++;
+        }
+    });
+
+    if (stats.soldStats.count > 0) {
+        stats.soldStats.averagePrice = stats.soldStats.totalRevenue / stats.soldStats.count;
+    }
+
+    res.json({ success: true, data: stats });
 }));
 
 // QR Code Label Generation with XSS protection

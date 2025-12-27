@@ -65,6 +65,15 @@
                 </svg>
                 <span>Wheel Take-Offs</span>
             </button>
+            <!-- NEW: Sold Archive Button -->
+            <button class="nav-item" onclick="toggleSoldArchive()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                    <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>💰 Sold Archive</span>
+            </button>
         </nav>
     </aside>
 
@@ -425,6 +434,23 @@
                         <label for="wheel-oem-part">OEM Part Number</label>
                         <input type="text" id="wheel-oem-part" placeholder="e.g., 28111FL01A">
                     </div>
+                    <!-- NEW: Category Fields -->
+                    <div class="form-group">
+                        <label for="wheel-category">Category *</label>
+                        <select id="wheel-category" required>
+                            <option value="">Select category</option>
+                            <option value="OEM">🏭 OEM Wheels</option>
+                            <option value="AFTERMARKET">🔧 Aftermarket</option>
+                            <option value="WINTER">❄️ Winter/Steel</option>
+                            <option value="REPLICA">🔄 Replica/OEM-Style</option>
+                            <option value="CUSTOM">⚡ Custom/Modified</option>
+                            <option value="UNKNOWN">❓ Uncategorized</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="wheel-subcategory">Subcategory (Optional)</label>
+                        <input type="text" id="wheel-subcategory" placeholder="e.g., Stock, Performance, Powder Coated">
+                    </div>
                     <div class="form-group">
                         <label for="wheel-condition">Condition *</label>
                         <select id="wheel-condition" required>
@@ -669,6 +695,56 @@
                     </ul>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- NEW: Mark as Sold Modal -->
+    <div id="mark-sold-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Mark Wheel as Sold</h2>
+                <button class="modal-close" onclick="closeMarkAsSoldModal()">&times;</button>
+            </div>
+            <form id="mark-sold-form">
+                <input type="hidden" id="sold-wheel-id">
+
+                <div class="form-info">
+                    <p><strong>SKU:</strong> <span id="sold-sku-display"></span></p>
+                    <p><strong>Listed Price:</strong> <span id="sold-listed-price"></span></p>
+                </div>
+
+                <div class="form-group">
+                    <label for="sold-date">Sale Date *</label>
+                    <input type="date" id="sold-date" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="sold-price">Sale Price * (Actual amount received)</label>
+                    <input type="number" id="sold-price" step="0.01" min="0" required placeholder="0.00">
+                    <small style="color: var(--text-secondary); font-size: 0.75rem; display: block; margin-top: 0.25rem;">
+                        Enter the actual sale price, which may differ from the listed price
+                    </small>
+                </div>
+
+                <div class="form-group">
+                    <label for="sold-customer">Customer Name (Optional)</label>
+                    <input type="text" id="sold-customer" placeholder="John Doe">
+                </div>
+
+                <div class="form-group">
+                    <label for="sold-notes">Sale Notes (Optional)</label>
+                    <textarea id="sold-notes" rows="3" placeholder="Payment method, delivery details, etc."></textarea>
+                </div>
+
+                <div class="form-warning">
+                    <p>⚠️ This will move the wheel to the Sold Archive</p>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeMarkAsSoldModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Mark as Sold</button>
+                </div>
+            </form>
         </div>
     </div>
 
